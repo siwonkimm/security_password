@@ -1,4 +1,4 @@
-import html as _html, inspect, math, re
+import hashlib, html as _html, inspect, math, re, urllib.request
 from pathlib import Path
 import numpy as np, pandas as pd, plotly.graph_objects as go, plotly.express as px, streamlit as st
 import streamlit.components.v1 as components
@@ -38,12 +38,13 @@ SRC = {
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
     ),
     "t3": (
-        "자체 학습 예측 모델 & 공개 데이터 검증 기준",
-        "외부 API를 사용하지 않고, Kaggle 고유 25,000건의 20개 구조적 피처로 학습한 Random Forest 회귀 모델과 상위 500개 흔한 비밀번호 사전을 결합해 진단합니다. "
-        "원본 데이터의 무차별 대입 수식이 놓치는 취약 습관(연속 문자열·반복 문자·연도/날짜 포함)에는 별도 로그 페널티를 차감하고, 흔한 비밀번호 Top 500 일치 시 사전 공격 기준(1초 이하)으로 즉시 하향 보정합니다.",
+        "자체 학습 예측 모델 & HIBP 실시간 유출 검증 (k-익명성)",
+        "Kaggle 고유 25,000건의 20개 구조적 피처로 학습한 Random Forest 회귀 모델, 상위 500개 흔한 비밀번호 사전, 그리고 HIBP(Have I Been Pwned) Pwned Passwords API를 결합해 진단합니다. "
+        "HIBP 조회 시 비밀번호 원문은 절대 외부로 전송되지 않으며, SHA-1 해시의 앞 5자리만 전송하는 k-익명성(k-Anonymity) 방식으로 실제 유출 횟수를 안전하게 확인합니다.",
         [
-            ("학습 데이터 출처: Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
-            ("흔한 목록 출처: Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")
+            ("학습 데이터: Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
+            ("흔한 목록: Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords"),
+            ("유출 조회 API: HIBP Pwned Passwords", "https://haveibeenpwned.com/API/v3#PwnedPasswords")
         ]
     )
 }
@@ -56,6 +57,26 @@ FEAT_COLS = [
 ]
 
 SEQ_ROWS = ["abcdefghijklmnopqrstuvwxyz", "0123456789", "qwertyuiop", "asdfghjkl", "zxcvbnm"]
+
+def check_hibp(pw: str):
+    """HIBP Pwned Passwords API (k-Anonymity): 유출 횟수 반환 (미유출=0, 네트워크 오류=None)"""
+    sha1 = hashlib.sha1(pw.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = sha1[:5], sha1[5:]
+    url = f"https://api.pwnedpasswords.com/range/{prefix}"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "PasswordSecurityDashboard", "Add-Padding": "true"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=3) as res:
+            for line in res.read().decode("utf-8").splitlines():
+                if ":" in line:
+                    h, cnt = line.split(":", 1)
+                    if h == suffix:
+                        return int(cnt)
+        return 0
+    except Exception:
+        return None
 
 def extract_features(pw: str) -> dict:
     L = len(pw)
@@ -286,12 +307,16 @@ div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16
 
 /* 질문 3 결과 카드 */
 .res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:462px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
-.res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
-.stat-box{background:#f5f7fa;border-radius:16px;padding:14px 16px;border:1px solid #e8ecf2}
+.res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.stat-box{background:#f5f7fa;border-radius:16px;padding:12px 14px;border:1px solid #e8ecf2}
 .stat-lbl{font-size:12px;font-weight:600;color:#6e6e73;margin-bottom:4px}
-.stat-val{font-size:21px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-sub{font-size:11.5px;color:#5b6472;margin-top:4px}
+.stat-val{font-size:20px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-sub{font-size:11.5px;color:#5b6472;margin-top:3px}
+.hibp-bar{border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:12.8px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hibp-bad{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
+.hibp-ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}
+.hibp-na{background:#f5f7fa;color:#5b6472;border:1px solid #e2e6ee}
 .chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
 .chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
 .tip-item{background:#f8f9fc;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13.2px;line-height:1.55;color:#1d1d1f;border-left:4px solid #5b8def;word-break:keep-all}
@@ -624,17 +649,22 @@ def diagnose(pw: str):
     score = float(np.clip((adj_lc + 2.0) / 14.0 * 100.0, 0, 100))
 
     common = low in TOP
+    hibp_cnt = check_hibp(pw)
+
     if common:
         score = min(score, 5.0)
         est_sec = min(est_sec, 1.0)
+    elif hibp_cnt is not None and hibp_cnt > 0:
+        score = min(score, 10.0 if hibp_cnt < 100 else 5.0)
+        est_sec = min(est_sec, 1.0)
 
     st.session_state["diag"] = dict(
-        L=L, score=score, est_sec=est_sec, pct=pct, common=common,
+        L=L, score=score, est_sec=est_sec, pct=pct, common=common, hibp=hibp_cnt,
         seq=seq, rep=rep, yr=yr, up=feats["n_upper"] > 0, dg=feats["n_digit"] > 0, sp=(feats["n_special"] + feats["n_non"]) > 0
     )
 
 def p_check():
-    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 서버에 저장되지 않습니다. 무차별 대입 ML 예측치에 '패턴 감점'과 '흔한 비밀번호 사전 검증'을 결합해 현실적인 방어 시간을 진단합니다.")
+    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장되지 않으며, HIBP 실시간 유출 조회 시에도 SHA-1 해시 앞 5자리만 전송(k-익명성)해 안전하게 진단합니다.")
 
     with st.container(key="chk_panel"):
         md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
@@ -652,8 +682,10 @@ def p_check():
     d = st.session_state.get("diag")
     if d:
         s = d["score"]
+        hibp_cnt = d.get("hibp")
+        leaked = hibp_cnt is not None and hibp_cnt > 0
         grade, col = ("위험", RED) if s < 30 else ("주의", ORANGE) if s < 55 else ("양호", BLUE) if s < 80 else ("안전", GREEN)
-        if d["common"]:
+        if d["common"] or leaked:
             grade, col = "위험", RED
 
         c1, c2, c3 = st.columns([2.3, 3.2, 2.5])
@@ -674,9 +706,16 @@ def p_check():
             show(style(vf, 215, t=22), "d2")
 
         with c2:
+            if hibp_cnt is None:
+                hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 HIBP 유출 DB 실시간 조회</span><span>네트워크 미연결 (로컬 진단)</span></div>'
+            elif hibp_cnt > 0:
+                hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 HIBP 실제 유출 이력 발견</span><span>전 세계 {hibp_cnt:,}회 유출</span></div>'
+            else:
+                hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ HIBP 실제 유출 이력 조회</span><span>유출 기록 없음 (0회)</span></div>'
+
             chips = [
                 ("8자 이상", d["L"] >= 8), ("12자 이상", d["L"] >= 12), ("대문자 포함", d["up"]),
-                ("숫자 포함", d["dg"]), ("특수문자 포함", d["sp"]), ("흔한 목록 제외", not d["common"]),
+                ("숫자 포함", d["dg"]), ("특수문자 포함", d["sp"]), ("유출 이력 없음", not d["common"] and not leaked),
                 ("연속 문자 없음", not d["seq"]), ("반복 문자 없음", not d["rep"]), ("연도/날짜 없음", not d["yr"])
             ]
             ch = "".join(f'<div class="chip {"ok" if v else "no"}">{"✓" if v else "✕"} {k}</div>' for k, v in chips)
@@ -684,14 +723,14 @@ def p_check():
             md(f"""<div class="res-card">
                 <div>
                     <div class="res-hdr">
-                        <span>🤖 ML 예측 기반 정밀 진단 리포트</span>
-                        <span style="font-size:12px;color:#5b6472;font-weight:600">Random Forest + 패턴 보정</span>
+                        <span>🤖 ML 예측 + HIBP 정밀 진단 리포트</span>
+                        <span style="font-size:12px;color:#5b6472;font-weight:600">k-익명성 검증</span>
                     </div>
                     <div class="stat-grid">
                         <div class="stat-box">
                             <div class="stat-lbl">예상 뚫리는 시간</div>
                             <div class="stat-val">{human(d['est_sec'])}</div>
-                            <div class="stat-sub">무차별 대입 + 패턴·사전 감점</div>
+                            <div class="stat-sub">무차별 대입 + 패턴·유출 보정</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-lbl">표본 내 보안 순위</div>
@@ -699,6 +738,7 @@ def p_check():
                             <div class="stat-sub">고유 25,000건 기준</div>
                         </div>
                     </div>
+                    {hibp_html}
                 </div>
                 <div>
                     <div style="font-size:13.5px;font-weight:800;color:#1d1d1f;margin-bottom:6px">9대 보안 구성 체크리스트</div>
@@ -708,6 +748,8 @@ def p_check():
 
         with c3:
             tips = []
+            if leaked:
+                tips.append(("warn", "실제 유출", f"전 세계 유출 데이터베이스(HIBP)에서 <b>{hibp_cnt:,}회</b> 유출된 이력이 확인되었습니다. 크리덴셜 스터핑 공격에 즉시 노출되므로 바로 변경하세요."))
             if d["common"]:
                 tips.append(("warn", "긴급", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 무차별 대입 시간과 무관하게 사전 대입 공격으로 1초 내에 뚫립니다."))
             if d["L"] < 12:
@@ -717,7 +759,7 @@ def p_check():
             if d["seq"] or d["rep"] or d["yr"]:
                 tips.append(("norm", "패턴 제거", "키보드 연속 배열(qwerty, 123), 반복 문자(aaa), 연도/생일(2024, 0315) 패턴을 제거하세요."))
             if not tips:
-                tips.append(("good", "최상 등급", "길이와 문자 다양성이 모두 우수하며 취약 패턴도 없습니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
+                tips.append(("good", "최상 등급", "HIBP 유출 이력이 없고 길이와 문자 다양성도 우수합니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
 
             tip_html = "".join(f'<div class="tip-item {cls}"><span class="tip-tag">{tag}</span>{txt}</div>' for cls, tag, txt in tips)
             md(f"""<div class="res-card" style="justify-content:flex-start">
