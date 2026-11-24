@@ -29,15 +29,15 @@ def human(s):
 def tick_axis(fig, axis="y"):
     kw = dict(tickvals=[math.log10(v) for v, _ in TICKS], ticktext=[t for _, t in TICKS])
     fig.update_yaxes(**kw) if axis == "y" else fig.update_xaxes(tickangle=0, **kw)
-def style(fig, h=310):
+def style(fig, h=220):
     fig.update_layout(height=h, margin=dict(l=16, r=18, t=26, b=14), paper_bgcolor="#fff", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT, size=12, color="#1d1d1f"), legend=dict(orientation="h", y=1.1, x=0, font=dict(size=11)), hoverlabel=dict(font_family=FONT, bgcolor="white"))
     fig.update_xaxes(gridcolor="#ececf0", zeroline=False, showline=False); fig.update_yaxes(gridcolor="#ececf0", zeroline=False, showline=False)
     return fig
 def show(fig):
-    cfg = {"displayModeBar": False}
-    try: st.plotly_chart(fig, width="stretch", config=cfg)
-    except TypeError: st.plotly_chart(fig, use_container_width=True, config=cfg)
+    cfg = {"displayModeBar": False}; height = int(fig.layout.height or 220)
+    try: st.plotly_chart(fig, width="stretch", height=height, config=cfg)
+    except TypeError: st.plotly_chart(fig, use_container_width=True, height=height, config=cfg)
 def head(title, take): md(f'<div class="sec"><div class="t">{title}</div><div class="k">{take}</div></div>')
 def source(key):
     n, t = SRC[key]
@@ -48,7 +48,8 @@ def kpis(items):
     body{{margin:0;font-family:{FONT}}}.g{{display:grid;grid-template-columns:repeat({len(items)},1fr);gap:14px}}
     .c{{background:#fff;border-radius:18px;padding:14px 18px;border-left:5px solid #4cc38a;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:u .6s cubic-bezier(.2,.8,.2,1) both}}
     .l{{color:#6e6e73;font-size:13px;font-weight:600}}.v{{margin-top:4px;color:#1d1d1f;font-size:26px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}}.u{{font-size:15px;color:#6e6e73;margin-left:3px}}
-    @keyframes u{{from{{opacity:0;transform:translateY(14px)}}to{{opacity:1;transform:none}}}}@media(max-width:700px){{.g{{grid-template-columns:1fr 1fr}}}}</style>
+    @keyframes u{{from{{opacity:0;transform:translateY(14px)}}to{{opacity:1;transform:none}}}}
+    @media(max-width:700px){{.g{{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}.c{{padding:5px 8px;border-left-width:3px;border-radius:12px}}.l{{font-size:10px;line-height:1.15}}.v{{font-size:15px!important;line-height:1.2;margin-top:1px}}.u{{font-size:11px;margin-left:2px}}}}</style>
     <div class="g">{cards}</div><script>document.querySelectorAll('.n').forEach(e=>{{const t=parseFloat(e.dataset.v);if(isNaN(t))return;const d=+e.dataset.d,s=performance.now();
     const f=n=>{{const p=Math.min((n-s)/1100,1),x=1-Math.pow(1-p,3);e.textContent=(t*x).toLocaleString('en-US',{{minimumFractionDigits:d,maximumFractionDigits:d}});if(p<1)requestAnimationFrame(f)}};requestAnimationFrame(f)}})</script>"""
     try: components.html(h, height=104)
@@ -84,12 +85,16 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 div[data-testid="stPlotlyChart"],.stPlotlyChart{background:#fff;border-radius:22px;padding:0;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe 1.2s cubic-bezier(.2,.8,.2,1) both;transition:transform .3s,box-shadow .3s}
 div[data-testid="stPlotlyChart"]:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(60,90,140,.16)}
 @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}@keyframes wipe{from{opacity:0;clip-path:inset(0 100% 0 0 round 22px)}to{opacity:1;clip-path:inset(0 0 0 0 round 22px)}}
-.rgs{display:flex;gap:12px}.rg{flex:1;min-width:0;height:104px;box-sizing:border-box;background:#fff;border-radius:20px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .7s both;transition:transform .3s}.rg:hover{transform:translateY(-4px)}
+.rgs{display:flex;gap:12px;container-type:inline-size}.rg{flex:1;min-width:0;height:104px;box-sizing:border-box;background:#fff;border-radius:20px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .7s both;transition:transform .3s}.rg:hover{transform:translateY(-4px)}
 .rw{position:relative;width:80px;height:80px;flex:none;counter-reset:n var(--p);animation:fill 1.8s cubic-bezier(.2,.8,.2,1) .3s forwards}
 .rw::after{content:counter(n) '%';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:var(--c)}
 .ring{width:100%;height:100%;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*3.6deg),#eef1f5 0);-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
-@keyframes fill{to{--p:var(--t)}}.rd b{font-size:14px}.rd span{color:#6b7280;font-size:12px;line-height:1.35}
+@keyframes fill{to{--p:var(--t)}}.rd{min-width:0}.rd b{font-size:14px}.rd span{color:#6b7280;font-size:12px;line-height:1.35;word-break:keep-all}
+@container(max-width:650px){.rgs{gap:8px}.rg{padding:8px;gap:8px;height:88px}.rw{width:58px;height:58px}.rw::after{font-size:14px}.ring{-webkit-mask:radial-gradient(circle,transparent 22px,#000 23px);mask:radial-gradient(circle,transparent 22px,#000 23px)}.rd b{display:block;font-size:11px;line-height:1.15}.rd span{display:none}}
 .box{background:#fff;border-radius:22px;padding:22px 26px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;line-height:1.7}.box b{font-size:19px}
+[data-testid="stForm"]{background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.9);border-radius:20px;padding:22px 24px;box-shadow:0 8px 28px rgba(44,62,90,.08)}
+[data-testid="stForm"] [data-testid="stTextInput"] input{min-height:48px;font-size:16px}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button{min-height:46px;font-weight:700}
 .pill{display:inline-block;background:#fff4e0;color:#b25e00;font-weight:700;font-size:13px;border-radius:99px;padding:5px 12px;margin:6px 0;animation:pu 2s infinite}@keyframes pu{50%{box-shadow:0 0 0 7px #ff9f0a22}}
 .chip{display:inline-block;border-radius:99px;padding:5px 12px;margin:3px 4px 3px 0;font-size:14px;font-weight:600}.ok{background:#e3f8e9;color:#1b7a36}.no{background:#ffe9e7;color:#c4261b}
 .spl{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:so 2.9s ease forwards}
@@ -130,12 +135,12 @@ if page == 0:
         head("강도 등급 분포", "등급별 5,000개씩 뽑은 균등 표본이라 막대 높이는 실제 비율이 아닙니다.")
         cnt = f.등급.value_counts().reindex(ORDER).fillna(0)
         fig = go.Figure(go.Bar(x=ORDER, y=cnt.values, marker_color=[CCOL[o] for o in ORDER], text=[f"{int(v):,}" for v in cnt.values], textposition="outside", cliponaxis=False))
-        fig.update_yaxes(title="비밀번호 수(개)"); show(style(fig, 310))
+        fig.update_yaxes(title="비밀번호 수(개)"); show(style(fig))
     with x3:
         head("엔트로피와 크랙 시간", f"엔트로피–크랙 시간 상관 r={np.corrcoef(f.entropy, f.lc)[0,1]:.2f}. 엔트로피가 길이에서 거의 그대로 계산돼 점들이 한 곡선을 따릅니다." if len(f) > 2 else "")
         s = f.sample(min(2500, len(f)), random_state=7)
         fig = go.Figure([go.Scatter(x=d.entropy, y=d.lc, mode="markers", name=k, marker=dict(size=5, color=CCOL[k], opacity=.55)) for k, d in s.groupby("등급", observed=True)])
-        fig.update_xaxes(title="엔트로피(bit)"); tick_axis(fig); show(style(fig, 310))
+        fig.update_xaxes(title="엔트로피(bit)"); tick_axis(fig); show(style(fig))
     source("t1")
 
 if page == 1:
@@ -158,12 +163,12 @@ if page == 1:
         for k, d in qq.groupby("category"): fig.add_trace(go.Scatter(x=d.lon, y=[f"{int(r)}위 {w}" for r, w in zip(d["rank"], d.password)], mode="markers", name=k, marker=dict(size=11),
             customdata=[human(v) for v in d.online_sec], hovertemplate="%{y}<br>온라인 %{customdata}<extra></extra>"))
         fig.update_yaxes(autorange="reversed", categoryorder="array", categoryarray=[f"{int(r)}위 {w}" for r, w in zip(qq["rank"], qq.password)]); tick_axis(fig, "x")
-        fig.update_xaxes(title="온라인 공격 크랙 시간(로그)"); show(style(fig, 310).update_layout(showlegend=False))
+        fig.update_xaxes(title="온라인 공격 크랙 시간(로그)"); show(style(fig).update_layout(showlegend=False))
         if len(q) > 20: st.caption("순위 차트는 상위 20개만 표시합니다.")
     with x2:
         head("카테고리별 분포", f"가장 많은 유형은 '{topc.index[0]}'({topc.iloc[0]}개)입니다.")
         fig = go.Figure(go.Bar(y=topc.index[::-1], x=topc.values[::-1], orientation="h", marker_color=BLUE, text=[f"{v/len(q):.0%}" for v in topc.values[::-1]], textposition="outside", cliponaxis=False))
-        fig.update_xaxes(title="비밀번호 수(개)", range=[0, topc.max() * 1.3]); show(style(fig, 310))
+        fig.update_xaxes(title="비밀번호 수(개)", range=[0, topc.max() * 1.3]); show(style(fig))
     with x3:
         gap = (q.lon - q.lof).median()
         head("온라인 vs 오프라인 크랙 시간", f"오프라인 공격은 온라인보다 중앙값 기준 약 10^{gap:.0f}배 빠릅니다. 카테고리별 중앙값입니다.")
@@ -172,7 +177,7 @@ if page == 1:
         for i, (cat, row) in enumerate(r.iterrows()): fig.add_trace(go.Scatter(x=[row.lof, row.lon], y=[cat, cat], mode="lines", line=dict(color="#d2d2d7", width=3), showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=r.lon, y=r.index, mode="markers", name="온라인", marker=dict(size=12, color=BLUE)))
         fig.add_trace(go.Scatter(x=r.lof, y=r.index, mode="markers", name="오프라인", marker=dict(size=12, color=RED)))
-        tick_axis(fig, "x"); show(style(fig, 310))
+        tick_axis(fig, "x"); show(style(fig))
     source("t2")
 
 if page == 2:
@@ -197,13 +202,13 @@ if page == 2:
         head("문자 구성별 평균 점수", "포함 여부로 나눈 평균입니다. 긴 비밀번호일수록 구성 요소도 많아 길이 효과가 섞여 있으니, 길이 범위를 좁혀 비교해 보세요.")
         rows = [(nm, h[h[col] > 0].Strength_Score.mean(), h[h[col] == 0].Strength_Score.mean()) for nm, col in [("대문자", "Uppercase_Count"), ("숫자", "Digit_Count"), ("특수문자", "Special_Char_Count")]]
         fig = go.Figure([go.Bar(name="포함", x=[r[0] for r in rows], y=[r[1] for r in rows], marker_color=BLUE), go.Bar(name="미포함", x=[r[0] for r in rows], y=[r[2] for r in rows], marker_color="#c7c7cc")])
-        fig.update_layout(barmode="group"); fig.update_yaxes(title="평균 강도 점수", range=[0, 100]); show(style(fig, 310))
+        fig.update_layout(barmode="group"); fig.update_yaxes(title="평균 강도 점수", range=[0, 100]); show(style(fig))
     with x3:
         head("침해 위험도 분포", "길이 구간별 High·Medium·Low 비율입니다.")
         h = h.assign(구간=pd.cut(h.Password_Length, [0, 7, 11, 15, 20], labels=["5~7자", "8~11자", "12~15자", "16~20자"]))
         ct = pd.crosstab(h.구간, h.Breach_Risk, normalize="index") * 100
         fig = go.Figure([go.Bar(name=k, x=ct.index.astype(str), y=ct[k], marker_color=RCOL[k], text=[f"{v:.0f}%" for v in ct[k]], textposition="inside") for k in ["High", "Medium", "Low"] if k in ct])
-        fig.update_layout(barmode="stack"); fig.update_yaxes(title="비율(%)", range=[0, 100]); show(style(fig, 310))
+        fig.update_layout(barmode="stack"); fig.update_yaxes(title="비율(%)", range=[0, 100]); show(style(fig))
     source("t3")
 
 def pool_size(p): return 26 * bool(re.search("[a-z]", p)) + 26 * bool(re.search("[A-Z]", p)) + 10 * bool(re.search("[0-9]", p)) + 33 * bool(re.search(r"[ -/:-@\[-`{-~]", p)) + 100 * bool(re.search(r"[^\x00-\x7f]", p))
@@ -228,12 +233,18 @@ def diagnose(pw, use_hibp):
 
 if page == 3:
     head("질문 4. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않으며, 유출 확인에는 해시 앞 5글자만 전송합니다(k-익명성).")
-    for col, (lab, v) in zip([st.sidebar] * 3, [("예시 · 흔한 비밀번호", "password123"), ("예시 · 규칙형", "Summer2024!"), ("예시 · 긴 무작위", "vK9#mQ2$zL7@pW4xR8")]):
-        if col.button(lab): diagnose(v, True)
-    with st.sidebar.form("f", clear_on_submit=True):
-        pw = st.text_input("비밀번호 입력", type="password", placeholder="실제 사용 중인 비밀번호는 발표 중 입력하지 마세요")
-        u = st.checkbox("유출 여부 확인(Have I Been Pwned)", value=True)
-        if st.form_submit_button("진단하기") and pw: diagnose(pw, u)
+    with st.expander("데이터 출처 · 계산 기준 · 한계"):
+        st.markdown("**유출 확인**: Have I Been Pwned의 Pwned Passwords range API(`api.pwnedpasswords.com/range`, 키 불필요)를 사용합니다. SHA-1 해시의 앞 5글자만 보내고 나머지는 브라우저가 아닌 앱 서버에서 대조하며, 비밀번호 원문은 저장하지 않습니다. 계정(이메일) 유출 조회용 v3 API는 유료 키가 필요해 사용하지 않았습니다.\n\n**점수**: 길이×log2(문자 종류 수)로 추정한 엔트로피에 패턴 감점을 적용해 80bit를 100점으로 환산했고, 유출·흔한 비밀번호는 상한을 둡니다. 교육용 근사치이며 실제 안전성을 보증하지 않습니다.")
+    _, right = st.columns([1, 2], gap="large")
+    with right:
+        st.caption("예시로 빠르게 확인")
+        examples = st.columns(3, gap="small")
+        for col, (label, value) in zip(examples, [("흔한 비밀번호", "password123"), ("규칙형", "Summer2024!"), ("긴 무작위", "vK9#mQ2$zL7@pW4xR8")]):
+            if col.button(label, use_container_width=True): diagnose(value, True)
+        with st.form("f", clear_on_submit=True):
+            pw = st.text_input("비밀번호 입력", type="password", placeholder="실제 사용 중인 비밀번호는 발표 중 입력하지 마세요")
+            u = st.checkbox("유출 여부 확인(Have I Been Pwned)", value=True)
+            if st.form_submit_button("진단하기", use_container_width=True) and pw: diagnose(pw, u)
     d = st.session_state.get("diag")
     if d:
         s = d["score"]; grade, col = ("위험", RED) if s < 30 else ("주의", ORANGE) if s < 55 else ("양호", BLUE) if s < 80 else ("안전", GREEN)
@@ -242,7 +253,7 @@ if page == 3:
         with c1:
             fig = go.Figure(go.Indicator(mode="gauge+number", value=round(s), number=dict(suffix="점", font=dict(size=44)), title=dict(text=f"위험도 등급: {grade}", font=dict(size=18)),
                 gauge=dict(axis=dict(range=[0, 100]), bar=dict(color=col, thickness=.35), bgcolor="#f2f2f5", borderwidth=0, steps=[dict(range=[0, 30], color="#ffe9e7"), dict(range=[30, 55], color="#fff2dc"), dict(range=[55, 80], color="#e5f1ff"), dict(range=[80, 100], color="#e3f8e9")])))
-            show(style(fig, 320))
+            show(style(fig, 280))
         with c2:
             chips = [("8자 이상", d["L"] >= 8), ("12자 이상", d["L"] >= 12), ("대문자", d["up"]), ("숫자", d["dg"]), ("특수문자", d["sp"]), ("흔한 목록 아님", not d["common"]), ("연속 패턴 없음", not d["seq"]), ("반복 문자 없음", not d["rep"]), ("연도 패턴 없음", not d["yr"])]
             ch = "".join(f'<span class="chip {"ok" if v else "no"}">{"✓" if v else "✕"} {k}</span>' for k, v in chips)
@@ -258,5 +269,3 @@ if page == 3:
         tips += ["사이트마다 다른 비밀번호를 쓰고 비밀번호 관리자를 사용하세요.", "가능한 모든 계정에 2단계 인증을 켜세요."]
         with c3:
             md('<div class="box" style="margin-top:0"><b>개선 권고</b><br>' + "<br>".join(f"• {t}" for t in tips) + "</div>")
-    with st.expander("데이터 출처 · 계산 기준 · 한계"):
-        st.markdown("**유출 확인**: Have I Been Pwned의 Pwned Passwords range API(`api.pwnedpasswords.com/range`, 키 불필요)를 사용합니다. SHA-1 해시의 앞 5글자만 보내고 나머지는 브라우저가 아닌 앱 서버에서 대조하며, 비밀번호 원문은 저장하지 않습니다. 계정(이메일) 유출 조회용 v3 API는 유료 키가 필요해 사용하지 않았습니다.\n\n**점수**: 길이×log2(문자 종류 수)로 추정한 엔트로피에 패턴 감점을 적용해 80bit를 100점으로 환산했고, 유출·흔한 비밀번호는 상한을 둡니다. 교육용 근사치이며 실제 안전성을 보증하지 않습니다.")
