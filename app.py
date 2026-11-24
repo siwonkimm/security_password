@@ -347,7 +347,7 @@ def p_intro():
     head("질문 0. 비밀번호가 '뚫린다'는 건 무슨 뜻일까?", "처음 보시는 분을 위한 요약판입니다. 아래 기준을 바꾸면 숫자와 차트가 함께 바뀝니다.")
     fl = filters(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
     tk = fl[0].select_slider("이 시간 안에 뚫리면 '위험'으로 셉니다", options=list(TS), value="1년", key="i_t"); T = TS[tk]
-    Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 24, 8, key="i_l")
+    Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 24, 12, key="i_l")
     fl[2].caption("↻ 기준을 바꾸면 아래 숫자와 차트가 바뀝니다")
 
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
@@ -380,29 +380,41 @@ def p_intro():
         show(style(fig, 310, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
 
     with x2:
-        head(f"{Ln}자 비밀번호, 조합별 버팀 시간(막대)", f"같은 {Ln}자라도 숫자만 쓰면 금방 뚫리지만, 특수문자를 섞으면 방어 시간이 크게 늘어납니다.")
-        sub = M[M.length == Ln]
-        if len(sub) < 30:
-            sub = M[M.length.between(Ln - 1, Ln + 1)]
-        tp_order = ["숫자만", "영문만", "영문+숫자", "특수문자 포함"]
-        tp_cols = [RED, ORANGE, BLUE, GREEN]
-        meds = [sub[sub["조합유형"] == tp].crack_time_sec.median() for tp in tp_order]
+        L_ref = max(Ln, 10)
+        sub = M[M.length.between(L_ref - 1, L_ref + 1)]
+        if len(sub) < 60:
+            sub = M[M.length.between(max(4, L_ref - 2), L_ref + 2)]
+        clean = sub[(sub.longest_seq < 3) & (sub.longest_rep < 3) & (sub.has_year == 0) & (sub.has_date == 0)]
+        note = " (8자 이하는 모두 즉시 뚫려 최소 10자 기준으로 비교)" if Ln < 10 else ""
+        head(
+            f"같은 {L_ref}자 내외, 사소한 습관이 깎는 시간(막대)",
+            f"길이를 늘려도 연속키(qwer·123), 생일·연도, 뻔한 치환(@·0)이 섞이면 방어력이 급감합니다.{note}"
+        )
+        groups = [
+            ("연속·반복 (qwer/aaa)", sub[(sub.longest_seq >= 3) | (sub.longest_rep >= 3)].crack_time_sec.median(), RED),
+            ("연도·날짜 (2024/0315)", sub[(sub.has_year == 1) | (sub.has_date == 1)].crack_time_sec.median(), ORANGE),
+            ("알파벳 치환 (P@ssw0rd류)", sub[(sub.has_leet == 1) & ((sub.longest_seq >= 3) | (sub.has_year == 1) | (sub.n_classes <= 3))].crack_time_sec.median() if not sub[(sub.has_leet == 1) & ((sub.longest_seq >= 3) | (sub.has_year == 1) | (sub.n_classes <= 3))].empty else sub[sub.has_leet == 1].crack_time_sec.median(), BLUE),
+            ("패턴 없는 무작위 조합", clean[clean.n_classes >= 3].crack_time_sec.median() if not clean[clean.n_classes >= 3].empty else clean.crack_time_sec.median(), GREEN),
+        ]
+        y_lbls = [g[0] for g in groups]
+        meds = [g[1] for g in groups]
+        cols = [g[2] for g in groups]
         l_meds = [float(np.clip(math.log10(max(v, 1e-3)), -3, 16)) if pd.notna(v) else -3.0 for v in meds]
         txt_lbl = [human(v).replace(" (1ms 미만)", "") if pd.notna(v) else "표본 없음" for v in meds]
 
         fig = go.Figure(go.Bar(
-            y=tp_order, x=[v + 3.2 for v in l_meds], orientation="h",
-            marker_color=tp_cols, text=txt_lbl, textposition="outside", cliponaxis=False,
+            y=y_lbls, x=[v + 3.2 for v in l_meds], orientation="h",
+            marker_color=cols, text=txt_lbl, textposition="outside", cliponaxis=False,
             textfont=dict(size=12, weight="bold", color="#1d1d1f"),
             hovertemplate="%{y}: %{text}<extra></extra>"
         ))
         fig.update_xaxes(
             tickvals=[0.2, 3.2, 6.756, 8.136, 10.699, 12.699],
             ticktext=["1ms", "1초", "1시간", "1일", "1년", "100년"],
-            range=[0, max(l_meds) + 6.5]
+            range=[0, max(l_meds) + 6.8]
         )
         fig.update_yaxes(showgrid=False)
-        show(style(fig, 310, t=24, l=12, r=24), "i2")
+        show(style(fig, 310, t=24, l=12, r=28), "i2")
 
     with x3:
         head("길이별 버팀 시간 추세(회귀 추세선)", "파란 점은 길이별 중앙값, 점선은 지수 회귀 추세선입니다. 빨간 점선(1년) 위에 머무르려면 최소 11~12자 이상이 필요합니다.")
@@ -447,10 +459,11 @@ def p_leak():
         st.info("조건에 맞는 데이터가 없습니다. 등급이나 길이 범위를 넓혀 보세요.")
         return
 
+    ent_col = "entropy" if "entropy" in f.columns else "shannon"
     kpis([
         ("선택된 표본 수", len(f), 0, "개"),
         ("길이 중앙값", float(f.length.median()), 0, "자"),
-        ("엔트로피 중앙값", float(f.entropy.median()), 1, "bit"),
+        ("엔트로피 중앙값", float(f[ent_col].median()), 1, "bit"),
         ("뚫리는 시간 중앙값", human(f.crack_time_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("표본 내 1년 내 뚫림", (f.crack_time_sec <= YR).mean() * 100, 0, "%"),
         ("표본 내 1시간 내 뚫림", (f.crack_time_sec <= 3600).mean() * 100, 0, "%")
