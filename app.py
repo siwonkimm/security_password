@@ -125,9 +125,9 @@ def tick_axis(fig, lo, hi, axis="y"):
     if axis == "y": fig.update_yaxes(**kw)
     else: fig.update_xaxes(**kw)
 
-def style(fig, h=310):
+def style(fig, h=310, t=26):
     fig.update_layout(
-        height=h, margin=dict(l=12, r=16, t=26, b=14), paper_bgcolor="#fff", plot_bgcolor="#fff",
+        height=h, margin=dict(l=12, r=16, t=t, b=14), paper_bgcolor="#fff", plot_bgcolor="#fff",
         font=dict(family=FONT, size=12, color="#1d1d1f"),
         legend=dict(orientation="h", y=1.12, x=0, font=dict(size=11)),
         hoverlabel=dict(font_family=FONT, bgcolor="white")
@@ -250,30 +250,30 @@ ML_MODEL = train_model(M)
 TOP = set(P.password.str.lower())
 
 md("""<style>@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
-html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif!important}
+html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif!important;overflow-x:hidden}
 .stApp{background:#e9edf2}#MainMenu,footer{visibility:hidden}[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"]{display:none!important}
 [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none}
-.block-container{max-width:1600px;padding:1.2rem 1.6rem 1.5rem;position:relative;z-index:1;animation:up .6s both}[data-testid="stVerticalBlock"]{gap:.6rem}
+.block-container{max-width:1520px;width:100%;box-sizing:border-box;padding:1rem 1.4rem 1.4rem;position:relative;z-index:1;animation:up .6s both}[data-testid="stVerticalBlock"]{gap:.55rem}
 @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes wipe{from{opacity:0;clip-path:inset(0 100% 0 0 round 22px)}to{opacity:1;clip-path:inset(0 0 0 0 round 22px)}}
-.st-key-hdr{background:linear-gradient(100deg,#171f3d,#0f1730);border-radius:22px;padding:14px 22px;border:1px solid #25305a;box-shadow:0 6px 24px rgba(15,23,48,.25)}
+.st-key-hdr{background:linear-gradient(100deg,#171f3d,#0f1730);border-radius:22px;padding:12px 20px;border:1px solid #25305a;box-shadow:0 6px 24px rgba(15,23,48,.25)}
 .st-key-hdr [data-testid="stHorizontalBlock"]{align-items:center!important}
 .st-key-hdr [data-testid="stMarkdownContainer"] p{margin:0!important;line-height:1!important}
 .st-key-hdr *{color:#e6e9f2}
-.ht{font-size:20px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;display:flex;align-items:center;height:50px}
-.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:nowrap;gap:8px;align-items:center}
-.st-key-hdr [data-testid="stButtonGroup"] button{min-height:50px;padding:10px 22px;font-size:16px;font-weight:700;border-radius:15px;background:#1a2547;border:1px solid #2a3868;white-space:nowrap;transition:all .25s}
+.ht{font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;display:flex;align-items:center;height:46px}
+.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:nowrap;gap:6px;align-items:center}
+.st-key-hdr [data-testid="stButtonGroup"] button{min-height:46px;padding:8px 18px;font-size:15px;font-weight:700;border-radius:14px;background:#1a2547;border:1px solid #2a3868;white-space:nowrap;transition:all .25s}
 .st-key-hdr [data-testid="stButtonGroup"] button:hover{transform:translateY(-2px);border-color:#5b8def}
 .st-key-hdr [data-testid="stButtonGroup"] button[aria-checked="true"],.st-key-hdr [data-testid="stButtonGroup"] button[aria-pressed="true"],.st-key-hdr button[data-testid="stBaseButton-segmented_controlActive"]{background:#5b8def!important;border-color:#8fb4ff;box-shadow:0 0 20px rgba(91,141,239,.6)}
-.st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap}.st-key-hdr [role="radiogroup"] label{padding:10px 18px;border-radius:14px;background:#1a2547;border:1px solid #2a3868}
-.st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:14px;min-height:50px}
-.sec{padding:4px 2px 4px;min-height:76px}.sec .t{font-size:16.5px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.8px;color:#5b6472;margin-top:4px;line-height:1.5}
+.st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap}.st-key-hdr [role="radiogroup"] label{padding:8px 16px;border-radius:14px;background:#1a2547;border:1px solid #2a3868}
+.st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:14px;min-height:46px}
+.sec{padding:4px 2px 4px;min-height:72px}.sec .t{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.5px;color:#5b6472;margin-top:4px;line-height:1.5}
 .bd{background:#5b8def;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px}
 div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe .9s cubic-bezier(.2,.8,.2,1) both;transition:box-shadow .3s}
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
 .ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:14px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both}.ins b{margin-right:8px}
-.box{background:#fff;border-radius:22px;padding:18px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;line-height:1.7;font-size:14px}.box b{font-size:17px}
-.chip{display:inline-block;border-radius:99px;padding:5px 12px;margin:3px 4px 3px 0;font-size:13.5px;font-weight:600}.ok{background:#e3f8e9;color:#1b7a36}.no{background:#ffe9e7;color:#c4261b}
+.box{background:#fff;border-radius:22px;padding:18px 20px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;line-height:1.65;font-size:13.8px;word-break:keep-all}.box b{font-size:16.5px}
+.chip{display:inline-block;border-radius:99px;padding:4px 11px;margin:3px 4px 3px 0;font-size:12.8px;font-weight:600}.ok{background:#e3f8e9;color:#1b7a36}.no{background:#ffe9e7;color:#c4261b}
 span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="slider"]{background:#5b8def!important}[data-testid="stExpander"]{border-radius:14px;background:#fff}
 [data-testid="stPopover"] button{border-radius:99px!important;padding:2px 10px!important;min-height:30px!important;font-size:12px!important;font-weight:700!important;background:#fff!important;border:1px solid #d5dbe5!important;box-shadow:0 1px 4px rgba(0,0,0,.04)!important}
 [data-testid="stPopover"] button:hover{border-color:#5b8def!important;color:#5b8def!important}
@@ -281,13 +281,12 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 .spl div{color:#fff;font-size:clamp(30px,6vw,64px);font-weight:800;letter-spacing:-.03em;animation:si 1.4s cubic-bezier(.2,.8,.2,1) both}
 @keyframes si{from{opacity:0;transform:scale(.92);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}@keyframes so{0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
 .tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .4s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:38px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:14px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
+.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:36px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:13px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b,.box,.box b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
-.st-key-chk_panel{background:#fff;border-radius:22px;padding:16px 20px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
+.st-key-chk_panel{background:#fff;border-radius:22px;padding:14px 18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
 .st-key-chk_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
-.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:46px;border-radius:14px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:13.5px;font-weight:700}
-[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:46px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700}[data-testid="stForm"] input{border-radius:14px;min-height:46px}
-@media(max-height:960px){.block-container{zoom:.9}}@media(max-height:880px){.block-container{zoom:.82}}@media(max-height:800px){.block-container{zoom:.74}}@media(max-height:720px){.block-container{zoom:.66}}@media(max-height:640px){.block-container{zoom:.58}}</style>""", False)
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:44px;padding:0 10px!important;border-radius:14px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:13px;font-weight:700}
+[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:44px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700;font-size:13.5px}[data-testid="stForm"] input{border-radius:14px;min-height:44px}</style>""", False)
 
 if not st.session_state.get("splash"):
     st.session_state["splash"] = True
@@ -357,7 +356,7 @@ def p_intro():
             fig.add_trace(go.Heatmap(z=z.reshape(10, 10), colorscale=[[0, "#cfeedd"], [1, "#ff6b6b"]], showscale=False, xgap=3, ygap=3, hoverinfo="skip"), 1, i + 1)
             fig.update_xaxes(visible=False, row=1, col=i + 1); fig.update_yaxes(visible=False, autorange="reversed", row=1, col=i + 1)
         fig.update_annotations(font_size=11)
-        show(style(fig, 300).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
+        show(style(fig, 300, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
 
     with x2:
         head("내 비밀번호 길이면 얼마나 버틸까?(막대 게이지)", "선택한 길이 ±1자 표본의 중앙값입니다. 빨강은 하루 안, 주황은 1년 안, 초록은 1년 넘게 버티는 구간입니다.")
@@ -375,7 +374,7 @@ def p_intro():
                 steps=[dict(range=[0, 4.936], color="#ffd9d6"), dict(range=[4.936, 7.499], color="#ffe9c7"), dict(range=[7.499, 14], color="#d5f3e1")]
             )
         ))
-        show(style(fig, 200).update_layout(margin=dict(l=40, r=40, t=30, b=20)), "i2")
+        show(style(fig, 200, t=30).update_layout(margin=dict(l=40, r=40, t=30, b=20)), "i2")
         st.markdown(f"길이 **{Ln}자** 안팎의 표본은 중앙값 **{human(m)}**이 걸려야 뚫립니다. (표본 {len(sub):,}개)")
 
     with x3:
@@ -397,7 +396,7 @@ def p_intro():
         fig.update_layout(barmode="stack")
         fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
         fig.update_yaxes(showgrid=False)
-        show(style(fig, 300).update_layout(margin=dict(l=12, r=16, t=42, b=14), legend=dict(orientation="h", y=1.16, x=0, font=dict(size=10.5))), "i3")
+        show(style(fig, 300, t=42).update_layout(margin=dict(l=12, r=16, t=42, b=14), legend=dict(orientation="h", y=1.16, x=0, font=dict(size=10.5))), "i3")
 
     with st.expander("데이터 출처 요약"):
         st.markdown(
@@ -584,14 +583,14 @@ def p_check():
 
     with st.container(key="chk_panel"):
         md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
-        top_row = st.columns([5.2, 1.6, 1.6, 1.6], vertical_alignment="center")
+        top_row = st.columns([4.6, 1.8, 1.8, 1.8], vertical_alignment="center")
         with top_row[0]:
             with st.form("f", clear_on_submit=True, border=False):
-                fc = st.columns([4.2, 1.2], vertical_alignment="center")
-                pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (서버에 저장되지 않습니다)", label_visibility="collapsed")
+                fc = st.columns([3.8, 1.4], vertical_alignment="center")
+                pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (저장 안 됨)", label_visibility="collapsed")
                 if fc[1].form_submit_button("점검하기") and pw:
                     diagnose(pw, True)
-        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 예시: 흔한형", "password123"), ("🧩 예시: 규칙형", "Summer2024!"), ("🎲 예시: 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
+        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 흔한형", "password123"), ("🧩 규칙형", "Summer2024!"), ("🎲 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
             if col.button(lab, key=f"d_ex{i}", use_container_width=True):
                 diagnose(v, True)
 
@@ -602,22 +601,22 @@ def p_check():
         if (d["cnt"] and d["cnt"] > 0) or d["common"]:
             grade, col = "위험", RED
 
-        c1, c2, c3 = st.columns([2.2, 3, 2.8])
+        c1, c2, c3 = st.columns([2.3, 3.1, 2.6])
         with c1:
             fig = go.Figure(go.Indicator(
                 mode="gauge+number", value=round(s),
-                number=dict(suffix="점", font=dict(size=40)),
-                title=dict(text=f"진단 등급: {grade}", font=dict(size=17)),
+                number=dict(suffix="점", font=dict(size=38)),
+                title=dict(text=f"진단 등급: {grade}", font=dict(size=16)),
                 gauge=dict(
                     axis=dict(range=[0, 100]), bar=dict(color=col, thickness=.35), bgcolor="#f2f2f5", borderwidth=0,
                     steps=[dict(range=[0, 30], color="#ffe9e7"), dict(range=[30, 55], color="#fff2dc"), dict(range=[55, 80], color="#e5f1ff"), dict(range=[80, 100], color="#e3f8e9")]
                 )
             ))
-            show(style(fig, 220), "d1")
+            show(style(fig, 235, t=54), "d1")
             vf = go.Figure([go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard") for g_ in ORDER])
             vf.add_vline(x=d["L"], line_color="#1d1d1f", line_dash="dash", annotation_text="내 길이")
             vf.update_xaxes(title="표본 등급별 길이 분포(자)")
-            show(style(vf, 220), "d2")
+            show(style(vf, 215, t=22), "d2")
 
         with c2:
             chips = [
@@ -631,9 +630,9 @@ def p_check():
                 -1: "유출 확인 서버(HIBP)에 연결하지 못했습니다. 잠시 후 다시 시도하세요."
             }.get(
                 d["cnt"],
-                f"유출 기록 <b>{d['cnt']:,}회</b> 발견! 이미 공개된 비밀번호이므로 즉시 변경하세요. (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>HIBP 확인 ↗</a>)"
+                f"유출 기록 <b>{d['cnt']:,}회</b> 발견! 즉시 변경하세요. (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>HIBP 확인 ↗</a>)"
                 if d["cnt"] and d["cnt"] > 0
-                else "유출 기록 <b>0건</b> (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>Have I Been Pwned ↗</a> 공개 해시 DB 기준 미유출)"
+                else "유출 기록 <b>0건</b> (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>Have I Been Pwned ↗</a> DB 기준 미유출)"
             )
 
             md(f"""<div class="box">
