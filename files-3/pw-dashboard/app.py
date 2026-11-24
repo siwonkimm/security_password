@@ -142,6 +142,13 @@ with st.container(key="hdr"):
 tour()
 cur = st.session_state.get("nav") or NAMES[0]; st.session_state["last_nav"] = cur; page = NAMES.index(cur)
 
+def _setall(key, vals): st.session_state[key] = list(vals)
+def multi_pick(col, label, options, key):
+    if key not in st.session_state: st.session_state[key] = list(options)
+    with col.popover(f"{label} · {len(st.session_state[key])}/{len(options)} 선택"):
+        b = st.columns(2); b[0].button("모두 선택", key=f"{key}_all", on_click=_setall, args=(key, options)); b[1].button("모두 해제", key=f"{key}_none", on_click=_setall, args=(key, []))
+        if hasattr(st, "pills"): return st.pills(label, options, selection_mode="multi", key=key, label_visibility="collapsed") or []
+        return st.multiselect(label, options, key=key, label_visibility="collapsed")
 def filters(n=3): return st.columns([2, 2, 3][:n], vertical_alignment="center")
 
 def p_intro():
@@ -183,7 +190,7 @@ def p_intro():
 
 def p_leak():
     head("질문 1. 비밀번호가 길수록 얼마나 오래 버틸까?", "고유 비밀번호 25,000개를 등급과 길이별로 살펴봅니다. 시간은 '해킹 프로그램이 맞힐 때까지 걸리는 시간'입니다.")
-    fl = filters(); gs = fl[0].multiselect("강도 등급", ORDER, default=ORDER, key="a_g"); lr = fl[1].slider("길이 범위(자)", 4, 63, (4, 40), key="a_l"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
+    fl = filters(); gs = multi_pick(fl[0], "강도 등급", ORDER, "a_g"); lr = fl[1].slider("길이 범위(자)", 4, 63, (4, 40), key="a_l"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
     f = M[M.등급.isin(gs) & M.length.between(*lr)]
     if f.empty: st.info("조건에 맞는 데이터가 없습니다. 등급이나 길이 범위를 넓혀 보세요."); return
     kpis([("고유 비밀번호", len(f), 0, "개"), ("길이 중앙값", float(f.length.median()), 0, "자"), ("예측 어려움 점수 중앙값", float(f.entropy.median()), 1, "bit"), ("뚫리는 시간 중앙값", human(f.crack_time_sec.median()), 0, ""), ("1년 안에 뚫림", (f.crack_time_sec <= YR).mean() * 100, 0, "%"), ("1시간 안에 뚫림", (f.crack_time_sec <= 3600).mean() * 100, 0, "%")])
@@ -211,7 +218,7 @@ def p_leak():
 
 def p_common():
     head("질문 2. 흔한 비밀번호는 얼마나 빨리 뚫릴까?", "온라인 = 로그인 창에 직접 입력해 보는 공격(느림), 오프라인 = 유출된 파일을 컴퓨터로 대량 대입하는 공격(매우 빠름)입니다.")
-    fl = filters(); n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n"); allc = sorted(P.category.unique()); cats = fl[1].multiselect("비밀번호 종류", allc, default=allc, key="b_c"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
+    fl = filters(); n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n"); allc = sorted(P.category.unique()); cats = multi_pick(fl[1], "비밀번호 종류", allc, "b_c"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
     q = P[(P["rank"] <= n) & P.category.isin(cats)]
     if q.empty: st.info("조건에 맞는 비밀번호가 없습니다. 종류를 선택해 주세요."); return
     topc = q.category.value_counts()
