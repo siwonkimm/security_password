@@ -15,7 +15,7 @@ CAND = [1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e1
 SRC = {"t1": ("Password Metrics Dataset", "원본 100,000행 중 중복 비밀번호를 제거한 고유 25,000개(원문은 저장하지 않음). 강도 등급은 등급별 5,000개씩 균등 표본이라 실제 이용자 비율이 아님. 뚫리는 시간은 10^-7~10^104초로 값 범위가 넓어 로그 눈금·중앙값으로 집계. 'Very week' 오타는 '매우 약함'으로 정리.", ""),
        "t2": ("Password Strength and Vulnerability Dataset", "흔한 비밀번호 500개(인기 순위 기준). Kaggle 설명에 따르면 원본은 Information is Beautiful의 자료입니다. value·time_unit은 '온라인 추측으로 뚫는 데 걸리는 시간', offline_crack_sec는 '오프라인으로 뚫는 시간(초)'이며, 둘을 같은 초 단위로 환산(1개월=30.4일, 1년=365.25일)해 비교했습니다. strength 열은 이 목록 안의 상대 점수라 쓰지 않았습니다.", "https://www.kaggle.com/datasets/utkarshx27/passwords")}
 
-def md(s): st.markdown("".join(l.strip() for l in s.splitlines()), unsafe_allow_html=True)
+def md(s, pad=True): st.markdown("".join(l.strip() for l in s.splitlines()) + ('<div style="height:16px"></div>' if pad else ""), unsafe_allow_html=True)
 def human(s):
     if s is None or not np.isfinite(s): return "측정 불가"
     if s < 1e-3: return "즉시"
@@ -59,6 +59,10 @@ def tile_grid(qq):
         return "rgb(%d,%d,%d)" % tuple(int(p[k] + (q_[k] - p[k]) * u) for k in range(3))
     cells = "".join(f'<div class="tl" style="background:{col(v)};animation-delay:{i*35}ms" title="{_html.escape(str(w))} · {human(s_)}"><span class="rk">{int(r)}위</span><b>{_html.escape(str(w))}</b><span class="tm">{human(s_)}</span></div>' for i, (r, w, v, s_) in enumerate(zip(qq["rank"], qq.password, qq.lon, qq.online_sec)))
     md(f'<div class="tg">{cells}</div>')
+def sup(n): return str(int(n)).translate(str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁻"))
+def infographic(cards):
+    cs = "".join(f'<div class="ig" style="animation-delay:{i*90}ms"><div class="ic">{ic}</div><div class="it"><div class="ib">{big}<small>{u}</small></div><div class="icp">{cap}</div></div></div>' for i, (ic, big, u, cap) in enumerate(cards))
+    md(f'<div class="igs">{cs}</div>')
 def kpis(items):
     cards = "".join(f'<div class="c" style="animation-delay:{i*80}ms"><div class="l">{l}</div><div class="v" style="font-size:{26 if isinstance(v,(int,float)) else 18}px"><span class="n" data-v="{v if isinstance(v,(int,float)) else ""}" data-d="{d}">{v if not isinstance(v,(int,float)) else f"{v:,.{d}f}"}</span><span class="u">{u}</span></div></div>' for i, (l, v, d, u) in enumerate(items))
     h = f"""<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"><style>
@@ -98,7 +102,7 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 .st-key-hdr [data-testid="stButtonGroup"] button[aria-checked="true"],.st-key-hdr [data-testid="stButtonGroup"] button[aria-pressed="true"],.st-key-hdr button[data-testid="stBaseButton-segmented_controlActive"]{background:#5b8def!important;border-color:#8fb4ff;box-shadow:0 0 20px rgba(91,141,239,.6)}
 .st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap}.st-key-hdr [role="radiogroup"] label{padding:10px 18px;border-radius:14px;background:#1a2547;border:1px solid #2a3868}
 .st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:12px}
-.sec{padding:4px 2px 8px;min-height:86px}.sec .t{font-size:16.5px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.8px;color:#5b6472;margin-top:4px;line-height:1.5}
+.sec{padding:4px 2px 4px;min-height:76px}.sec .t{font-size:16.5px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.8px;color:#5b6472;margin-top:4px;line-height:1.5}
 .bd{background:#5b8def;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px}
 div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe 1.1s cubic-bezier(.2,.8,.2,1) both;transition:box-shadow .3s}
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
@@ -110,11 +114,12 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 .spl{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:so 2.9s ease forwards}
 .spl div{color:#fff;font-size:clamp(30px,6vw,64px);font-weight:800;letter-spacing:-.03em;animation:si 1.6s cubic-bezier(.2,.8,.2,1) both}
 @keyframes si{from{opacity:0;transform:scale(.92);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}@keyframes so{0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
-.tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);min-height:300px;box-sizing:border-box;align-content:start}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .5s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .5s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:38px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:14px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
 @media(max-height:960px){.block-container{zoom:.9}}@media(max-height:880px){.block-container{zoom:.82}}@media(max-height:800px){.block-container{zoom:.74}}@media(max-height:720px){.block-container{zoom:.66}}@media(max-height:640px){.block-container{zoom:.58}}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}</style>""")
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}</style>""", False)
 if not st.session_state.get("splash"):
-    st.session_state["splash"] = True; md('<div class="spl"><div>내 비밀번호, 얼마나 버틸까?</div></div>')
+    st.session_state["splash"] = True; md('<div class="spl"><div>내 비밀번호, 얼마나 버틸까?</div></div>', False)
 
 NAMES = ["👋 시작하기", "📊 뚫리는 시간", "⚠️ 흔한 비밀번호", "🔍 내 비밀번호 점검"]
 if "nav" not in st.session_state: st.session_state["nav"] = NAMES[0]
@@ -143,7 +148,9 @@ def p_intro():
     Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 30, 8, key="i_l"); fl[2].caption("↻ 기준을 바꾸면 아래 숫자와 차트가 바뀝니다")
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
     ins(f"해킹 프로그램은 비밀번호를 하나씩 넣어 보며 맞는 것을 찾습니다. 이 대시보드의 <b>뚫리는 시간</b>은 그 프로그램이 맞힐 때까지 걸리는 시간이고 길수록 안전합니다(숫자 4자리는 가능한 조합이 1만 개뿐). 같은 기준({tk})으로 보면 유출 표본의 {pc[0]:.0f}%, 흔한 비밀번호는 온라인 {pc[1]:.0f}%·오프라인 {pc[2]:.0f}%가 뚫립니다. 어디서 공격받느냐에 따라 위험이 크게 달라집니다.", GREEN, "한눈에 보기")
-    kpis([("분석한 비밀번호", len(M), 0, "개"), ("흔한 비밀번호 목록", len(P), 0, "개"), (f"{tk} 안에 뚫림 · 유출 표본", pc[0], 0, "%"), (f"{tk} 안에 뚫림 · 흔한 것(온라인)", pc[1], 0, "%"), (f"{tk} 안에 뚫림 · 흔한 것(오프라인)", pc[2], 0, "%")])
+    gap = float((P.lon - P.lof).median()); slp = float(np.polyfit(M.length, M.lc, 1)[0])
+    infographic([("📦", f"{len(M) + len(P):,}", "개", f"분석한 비밀번호 (유출 표본 {len(M):,}개 + 흔한 비밀번호 {len(P)}개)"), ("🔓", f"{pc[1]:.0f}", "%", f"흔한 비밀번호 중 {tk} 안에 로그인 창 공격으로 뚫리는 비율"),
+        ("⚡", f"10{sup(round(gap))}", "배", "유출 파일을 대입하는 공격이 로그인 창 공격보다 빠른 정도(중앙값)"), ("📏", f"×{10 ** slp:.0f}", "배 / 1자", "비밀번호가 1자 길어질 때 뚫리는 시간이 늘어나는 정도(유출 표본)")])
     x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
         head("100개 중 몇 개가 뚫릴까?(와플 차트)", f"네모 한 칸이 비밀번호 100개 중 1개, 빨강은 {tk} 안에 뚫리는 것입니다. 유출 표본은 등급별 균등 추출이라 실제 비율은 아닙니다.")
@@ -168,8 +175,8 @@ def p_intro():
         sk = M.assign(구간=pd.cut(M.length, [0, 7, 11, 15, 20, 70], labels=bins).astype(str), 등급=M.등급.astype(str)).groupby(["구간", "등급"]).size().reset_index(name="n")
         fig = go.Figure(go.Sankey(node=dict(label=bins + ORDER, color=["#9db7ee"] * 5 + [CCOL[o] for o in ORDER], pad=14, thickness=14), link=dict(source=[bins.index(a) for a in sk.구간], target=[5 + ORDER.index(b) for b in sk.등급], value=sk.n, color="rgba(91,141,239,.22)")))
         show(style(fig, 300), "i3")
-    with st.expander("데이터 출처 · 지도(지역) 시각화를 넣지 않은 이유"):
-        st.markdown("두 데이터 모두 국가·지역 정보가 없어 지도 시각화는 넣지 않았습니다. 데이터에 없는 위치를 임의로 만들어 붙이는 것은 정직한 시각화가 아니라고 판단했습니다. 데이터별 출처와 집계 기준은 각 페이지 하단에 있습니다.\n\n🔗 흔한 비밀번호 목록: [Kaggle에서 보기](https://www.kaggle.com/datasets/utkarshx27/passwords)")
+    with st.expander("데이터 출처"):
+        st.markdown("데이터별 집계 기준과 한계는 각 페이지 하단에 있습니다.\n\n🔗 흔한 비밀번호 목록: [Kaggle에서 보기](https://www.kaggle.com/datasets/utkarshx27/passwords)")
 
 def p_leak():
     head("질문 1. 비밀번호가 길수록 얼마나 오래 버틸까?", "고유 비밀번호 25,000개를 등급과 길이별로 살펴봅니다. 시간은 '해킹 프로그램이 맞힐 때까지 걸리는 시간'입니다.")
@@ -201,14 +208,14 @@ def p_leak():
 
 def p_common():
     head("질문 2. 흔한 비밀번호는 얼마나 빨리 뚫릴까?", "온라인 = 로그인 창에 직접 입력해 보는 공격(느림), 오프라인 = 유출된 파일을 컴퓨터로 대량 대입하는 공격(매우 빠름)입니다.")
-    fl = filters(); n = fl[0].slider("상위 몇 개를 볼까요?", 5, 100, 20, 5, key="b_n"); allc = sorted(P.category.unique()); cats = fl[1].multiselect("비밀번호 종류", allc, default=allc, key="b_c"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
+    fl = filters(); n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n"); allc = sorted(P.category.unique()); cats = fl[1].multiselect("비밀번호 종류", allc, default=allc, key="b_c"); fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
     q = P[(P["rank"] <= n) & P.category.isin(cats)]
     if q.empty: st.info("조건에 맞는 비밀번호가 없습니다. 종류를 선택해 주세요."); return
     topc = q.category.value_counts()
     kpis([("표시 중 비밀번호", len(q), 0, "개"), ("가장 많은 종류", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"), ("온라인 공격 · 중앙값", human(q.online_sec.median()), 0, ""), ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()), 0, ""), ("온라인 · 1일 안에 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"), ("오프라인 · 1초 안에 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")])
-    x1, x2, x3 = st.columns([4, 3, 3]); qq = q.head(20)
+    x1, x2, x3 = st.columns([4, 3, 3]); qq = q
     with x1:
-        head(f"가장 흔한 비밀번호 TOP {len(qq)}, 얼마나 빨리 뚫릴까?(타일 지도)", "칸 하나가 비밀번호 하나입니다. 빨강일수록 빨리 뚫리고(온라인 공격 기준) 초록일수록 오래 걸립니다." + (" 상위 20개만 보여 줍니다." if len(q) > 20 else ""))
+        head(f"가장 흔한 비밀번호 {len(qq)}개, 얼마나 빨리 뚫릴까?(타일 지도)", "칸 하나가 비밀번호 하나입니다. 빨강일수록 빨리 뚫리고(온라인 공격 기준) 초록일수록 오래 걸립니다." + (" 칸이 많으면 상자 안에서 스크롤해 보세요." if len(q) > 20 else ""))
         tile_grid(qq)
         with st.popover("📋 표 보기"): st.dataframe(qq.assign(온라인=qq.online_sec.map(human), 오프라인=qq.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
     with x2:
