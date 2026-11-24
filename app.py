@@ -18,20 +18,6 @@ BLUE, GREEN, ORANGE, RED, GRAY, YEL = "#5b8def", "#4cc38a", "#ff9f0a", "#ff3b30"
 KO = {"Very week": "매우 약함", "Week": "약함", "Average": "보통", "Strong": "강함", "Very strong": "매우 강함"}
 ORDER = list(KO.values())
 CCOL = dict(zip(ORDER, [RED, ORANGE, YEL, BLUE, GREEN]))
-
-CAT_KO = {
-    "name": "이름·고유명사",
-    "cool-macho": "허세·마초형",
-    "simple-alphanumeric": "단순 숫자·키보드",
-    "fluffy": "감성·애칭형",
-    "sport": "스포츠·팀명",
-    "nerdy-pop": "덕후·팝컬처",
-    "animal": "동물",
-    "password-related": "비밀번호·로그인류",
-    "food": "음식",
-    "rebellious-rude": "반항·비속어"
-}
-
 YR = 31557600
 CAND = [1e-3, 1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e12, YR * 1e18, YR * 1e24, YR * 1e36]
 
@@ -43,7 +29,7 @@ SRC = {
     ),
     "t2": (
         "Password Strength and Vulnerability Dataset (Kaggle / Information is Beautiful)",
-        "흔한 비밀번호 500개(인기 순위 기준). 원출처는 Information is Beautiful의 공개 자료입니다. value·time_unit은 '온라인 로그인 추측 공격으로 뚫는 시간', offline_crack_sec는 '유출 해시 파일 오프라인 대입 공격 시간(초)', strength는 '문자 구성 기반 기계적 강도 점수(0~48점)'이며 동일 초 단위로 환산해 비교했습니다.",
+        "흔한 비밀번호 500개(인기 순위 기준). 원출처는 Information is Beautiful의 공개 자료입니다. value·time_unit은 '온라인 로그인 추측 공격으로 뚫는 시간', offline_crack_sec는 '유출 해시 파일 오프라인 대입 공격 시간(초)'이며 동일 초 단위로 환산(1개월=30.4일, 1년=365.25일)해 비교했습니다.",
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
     ),
     "t3": (
@@ -192,9 +178,9 @@ def tile_grid(qq):
         p, q_, u = (A, B, t * 2) if t < .5 else (B, Cc, (t - .5) * 2)
         return "rgb(%d,%d,%d)" % tuple(int(p[k] + (q_[k] - p[k]) * u) for k in range(3))
     cells = "".join(
-        f'<div class="tl" style="background:{col(v)};animation-delay:{min(i,20)*30}ms" title="{_html.escape(str(w))} ({_html.escape(str(ck))}) · 온라인 {human(s_)} / 오프라인 {human(of_)}">'
+        f'<div class="tl" style="background:{col(v)};animation-delay:{min(i,20)*30}ms" title="{_html.escape(str(w))} · {human(s_)}">'
         f'<span class="rk">{int(r)}위</span><b>{_html.escape(str(w))}</b><span class="tm">{human(s_)}</span></div>'
-        for i, (r, w, v, s_, of_, ck) in enumerate(zip(qq["rank"], qq.password, qq.lon, qq.online_sec, qq.offline_crack_sec, qq.cat_ko))
+        for i, (r, w, v, s_) in enumerate(zip(qq["rank"], qq.password, qq.lon, qq.online_sec))
     )
     md(f'<div class="tg">{cells}</div>')
 
@@ -246,10 +232,8 @@ def load():
     m["조합유형"] = np.select(conds, choices, default="영문+숫자")
 
     p = pd.read_csv(_find_file("common_passwords.csv"))
-    p["password"] = p["password"].astype(str)
     p["lon"] = np.log10(p.online_sec.clip(lower=1e-6))
     p["lof"] = np.log10(p.offline_crack_sec.clip(lower=1e-6))
-    p["cat_ko"] = p["category"].map(CAT_KO).fillna(p["category"])
     return m, p
 
 @st.cache_resource
@@ -263,7 +247,7 @@ def train_model(m: pd.DataFrame):
 
 M, P = load()
 ML_MODEL = train_model(M)
-TOP = set(P.password.str.lower())
+TOP = set(P.password.astype(str).str.lower())
 
 md("""<style>@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif!important;overflow-x:hidden}
@@ -544,88 +528,52 @@ def p_leak():
     source("t1")
 
 def p_common():
-    head("질문 2. 흔한 비밀번호는 왜 위험하고, 어떤 착시를 일으킬까?", "전 세계 상위 500개 흔한 비밀번호의 심리 유형과 '영문+숫자 조합'이 만드는 가짜 안전 점수(strength)의 함정을 살펴봅니다.")
+    head("질문 2. 흔한 비밀번호는 얼마나 빨리 뚫릴까?", "온라인 = 로그인 창 직접 입력 공격(느림), 오프라인 = 유출된 해시 파일을 컴퓨터로 대량 대입하는 공격(매우 빠름)입니다.")
     fl = filters()
-    n = fl[0].slider("상위 몇 개를 볼까요?", 10, 500, 100, 10, key="b_n")
-    allc = list(P.cat_ko.value_counts().index)
-    cats = multi_pick(fl[1], "비밀번호 유형", allc, "b_c")
-    fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다 (500개로 넓히면 passw0rd·bond007 등도 확인 가능)")
+    n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n")
+    allc = sorted(P.category.unique())
+    cats = multi_pick(fl[1], "비밀번호 종류", allc, "b_c")
+    fl[2].caption("↻ 필터를 바꾸면 KPI와 차트가 함께 바뀝니다")
 
-    q = P[(P["rank"] <= n) & P.cat_ko.isin(cats)]
+    q = P[(P["rank"] <= n) & P.category.isin(cats)]
     if q.empty:
-        st.info("조건에 맞는 비밀번호가 없습니다. 비밀번호 유형을 선택해 주세요.")
+        st.info("조건에 맞는 비밀번호가 없습니다. 종류를 선택해 주세요.")
         return
 
-    topc = q.cat_ko.value_counts()
-    trap_q = q[q["strength"] >= 20]
+    topc = q.category.value_counts()
     kpis([
         ("표시 중 비밀번호", len(q), 0, "개"),
-        ("가장 많은 유형", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"),
-        ("기계 강도 20점+ 착시", len(trap_q), 0, "개"),
+        ("가장 많은 종류", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"),
         ("온라인 공격 · 중앙값", human(q.online_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
-        ("오프라인 유출 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
-        ("오프라인 · 1초 내 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")
+        ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
+        ("온라인 · 1일 안에 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"),
+        ("오프라인 · 1초 안에 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")
     ])
 
-    x1, x2, x3 = st.columns([4, 2.8, 3.2])
+    x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
-        tbl_b1 = lambda: st.dataframe(
-            q.assign(온라인=q.online_sec.map(human), 오프라인=q.offline_crack_sec.map(human), 강도점수=q.strength.astype(int))[
-                ["rank", "password", "cat_ko", "강도점수", "온라인", "오프라인"]
-            ].rename(columns={"rank": "순위", "password": "비밀번호", "cat_ko": "유형"}),
-            hide_index=True
-        )
-        head(f"가장 흔한 비밀번호 {len(q)}개 타일 지도", "온라인 시간 기준 색상(빨강=즉시~수분, 노랑=수일~수개월, 초록=1년+). 마우스를 올리면 오프라인 시간도 보입니다.", table_fn=tbl_b1)
+        tbl_b1 = lambda: st.dataframe(q.assign(온라인=q.online_sec.map(human), 오프라인=q.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
+        head(f"가장 흔한 비밀번호 {len(q)}개, 얼마나 빨리 뚫릴까?(타일 지도)", "절대 시간 기준 색상입니다(빨강=즉시~수분, 노랑=수일~수개월, 초록=1년 이상). 칸이 많으면 스크롤해 보세요.", table_fn=tbl_b1)
         tile_grid(q)
 
     with x2:
-        head("사람들은 어떤 단어를 제일 많이 쓸까?(도넛)", f"1위는 '{topc.index[0]}'({topc.iloc[0]}개, {topc.iloc[0]/len(q):.0%})입니다. 이름·허세·감성 단어가 대다수입니다.")
-        fig = go.Figure(go.Pie(
-            labels=topc.index, values=topc.values, hole=.58, sort=False, textinfo="percent",
-            marker=dict(colors=px.colors.qualitative.Set3 * 2, line=dict(color="#fff", width=2)),
-            hovertemplate="%{label}: %{value}개 (%{percent})<extra></extra>"
-        ))
-        fig.add_annotation(text=f"<b>{len(q)}개</b>", x=.5, y=.5, showarrow=False, font=dict(size=21))
-        show(style(fig, 310).update_layout(legend=dict(orientation="v", x=1.0, y=.5, font=dict(size=10.5))), "b2")
+        head("어떤 종류가 가장 많을까?(도넛 차트)", f"가장 많은 종류는 '{topc.index[0]}'({topc.iloc[0]}개)입니다. 조각이 클수록 비중이 높습니다.")
+        fig = go.Figure(go.Pie(labels=topc.index, values=topc.values, hole=.58, sort=False, textinfo="percent", marker=dict(colors=px.colors.qualitative.Set3 * 2, line=dict(color="#fff", width=2))))
+        fig.add_annotation(text=f"<b>{len(q)}개</b>", x=.5, y=.5, showarrow=False, font=dict(size=22))
+        show(style(fig, 300).update_layout(legend=dict(orientation="v", x=1.0, y=.5, font=dict(size=11))), "b2")
 
     with x3:
-        head(
-            "기계는 안전하다는데 다 털리는 '착시 비밀번호'(산점도)",
-            "영문+숫자를 섞어 강도 점수(Y축)는 높게 받았지만, 흔한 목록이라 사전 공격에 1초 만에 뚫리는 함정입니다."
-        )
-        norm_q = q[q["strength"] < 20]
-        high_q = q[q["strength"] >= 20].sort_values("strength", ascending=False)
-
+        a_, b_ = (q.online_sec <= 86400).mean() * 100, (q.offline_crack_sec <= 86400).mean() * 100
+        head("시간이 지날수록 몇 %가 뚫릴까?(누적 면적 차트)", f"하루 안에 온라인 공격으로 {a_:.0f}%, 오프라인 공격으로 {b_:.0f}%가 뚫립니다. 곡선이 왼쪽에 치우칠수록 치명적입니다.")
         fig = go.Figure()
-        if not norm_q.empty:
-            fig.add_trace(go.Scatter(
-                x=norm_q["rank"], y=norm_q["strength"], mode="markers", name="일반 흔한 비번 (<20점)",
-                marker=dict(color="#b8c2d1", size=7, opacity=0.65),
-                customdata=np.stack([norm_q.password, norm_q.cat_ko, norm_q.offline_crack_sec.map(human)], axis=-1),
-                hovertemplate="<b>%{customdata[0]}</b> (%{x}위 · %{customdata[1]})<br>기계 강도: %{y:.0f}점<br>오프라인 해독: %{customdata[2]}<extra></extra>"
-            ))
-        if not high_q.empty:
-            top_lbl_set = set(high_q.head(6).password)
-            txt_arr = [pw if pw in top_lbl_set else "" for pw in high_q.password]
-            fig.add_trace(go.Scatter(
-                x=high_q["rank"], y=high_q["strength"], mode="markers+text", name="고득점 착시 비번 (20점+)",
-                text=txt_arr, textposition="top center", cliponaxis=False,
-                textfont=dict(size=11, color=RED, weight="bold"),
-                marker=dict(color=RED, size=10, line=dict(color="#fff", width=1.5)),
-                customdata=np.stack([high_q.password, high_q.cat_ko, high_q.offline_crack_sec.map(human)], axis=-1),
-                hovertemplate="<b>%{customdata[0]}</b> (%{x}위 · %{customdata[1]})<br>기계 강도: %{y:.0f}점 (착시!)<br>오프라인 해독: %{customdata[2]}<extra></extra>"
-            ))
-        fig.add_hline(y=20, line_dash="dot", line_color=ORANGE, annotation_text="영문+숫자 착시선(20점)", annotation_position="bottom right")
-        fig.update_xaxes(title="인기 순위 (1위 = 가장 흔함)")
-        fig.update_yaxes(title="기계적 강도 점수 (strength)", range=[-3, max(float(q.strength.max()) + 10, 42)])
-        show(style(fig, 310, t=34, r=20), "b3")
+        for nm, col, rgba, v in [("온라인(로그인 창)", BLUE, "rgba(91,141,239,.18)", q.lon), ("오프라인(유출 파일)", RED, "rgba(255,59,48,.14)", q.lof)]:
+            xs = np.sort(v.values); ys = np.arange(1, len(xs) + 1) / len(xs) * 100
+            fig.add_trace(go.Scatter(x=xs, y=ys, name=nm, mode="lines", line=dict(color=col, width=3, shape="hv"), fill="tozeroy", fillcolor=rgba, hovertemplate="%{y:.0f}%가 뚫림<extra>" + nm + "</extra>"))
+        tick_axis(fig, min(q.lon.min(), q.lof.min()), max(q.lon.max(), q.lof.max()), "x")
+        fig.update_yaxes(title="뚫린 비율(%)", range=[0, 102])
+        show(style(fig), "b3")
 
-    ex_names = " · ".join(f"<b>{w}</b>({int(s)}점)" for w, s in zip(trap_q.sort_values("strength", ascending=False).password.head(4), trap_q.sort_values("strength", ascending=False).strength.head(4)))
-    trap_msg = f" 특히 {ex_names}처럼 영문과 숫자를 섞어 기계 점수가 높더라도 유명 단어·팝컬처 조합이면 해커 사전 1순위에 올라 즉시 뚫립니다." if not trap_q.empty else ""
-    ins(
-        f"온라인 대입보다 유출 해시 오프라인 공격은 정확히 <b>1억 배(10⁸배)</b> 빠릅니다(오프라인 중앙값 {human(q.offline_crack_sec.median())}).{trap_msg}",
-        RED, "착시 주의"
-    )
+    ins(f"표시 중 {len(q)}개 중 {(q.online_sec <= 86400).mean():.0%}는 로그인 창 공격에도 하루 안에 뚫리고, 유출 파일을 대입하는 오프라인 공격은 중앙값 {human(q.offline_crack_sec.median())}이면 충분합니다.")
     source("t2")
 
 def diagnose(pw: str):
@@ -670,7 +618,7 @@ def p_check():
                 pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (저장 안 됨)", label_visibility="collapsed")
                 if fc[1].form_submit_button("점검하기") and pw:
                     diagnose(pw)
-        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 흔한형", "passw0rd"), ("🧩 규칙형", "Summer2024!"), ("🎲 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
+        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 흔한형", "password123"), ("🧩 규칙형", "Summer2024!"), ("🎲 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
             if col.button(lab, key=f"d_ex{i}", use_container_width=True):
                 diagnose(v)
 
