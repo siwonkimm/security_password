@@ -24,17 +24,23 @@ CAND = [1e-3, 1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR
 SRC = {
     "t1": (
         "Password Metrics Dataset (Kaggle)",
-        "원본 100,000행 중 중복 비밀번호를 제거한 고유 25,000개(개인정보 보호를 위해 비밀번호 원문은 제거하고 길이·문자 구성·패턴 등 20개 수치 피처만 저장). 강도 등급은 등급별 약 5,000개씩 균등 추출된 표본이므로 실제 이용자 비율과 다름. 뚫리는 시간은 10^-7~10^104초로 범위가 넓어 로그 눈금·중앙값으로 집계.",
+        "원본 100,000행 중 중복을 제거한 고유 25,000개(개인정보 보호를 위해 원문은 제거하고 길이·문자 구성·패턴 등 20개 수치 피처만 저장). "
+        "여기서 '뚫리는 시간(초)'은 문자 종류 크기(N)와 길이(L)에 따른 모든 경우의 수(N^L)를 무차별 대입(Brute-force)할 때 걸리는 이론적 연산 시간입니다(범위 10^-7~10^104초, 로그 눈금·중앙값 집계). "
+        "[한계] 등급별 약 5,000개씩 추출된 균등 표본이므로 실제 이용자 비율과 다르며, 원본 수식에는 키보드 연속·연도 패턴 감점이 반영되어 있지 않습니다.",
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset")]
     ),
     "t2": (
         "Password Strength and Vulnerability Dataset (Kaggle / Information is Beautiful)",
-        "흔한 비밀번호 500개(인기 순위 기준). 원출처는 Information is Beautiful의 공개 자료입니다. value·time_unit은 '온라인 로그인 추측 공격으로 뚫는 시간', offline_crack_sec는 '유출 해시 파일 오프라인 대입 공격 시간(초)'이며 동일 초 단위로 환산(1개월=30.4일, 1년=365.25일)해 비교했습니다.",
+        "흔한 비밀번호 상위 500개 공개 자료입니다. "
+        "① 온라인 시간(online_sec)은 로그인 창 직접 입력 공격(서버 지연으로 초당 약 10회 대입 가정), "
+        "② 오프라인 시간(offline_crack_sec)은 유출된 해시 파일을 고성능 장비로 대입하는 공격(초당 약 10억 회 가정, 온라인보다 정확히 10^8배 빠름)을 초 단위로 환산(1개월=30.4일, 1년=365.25일)한 값입니다. "
+        "[한계] 표기된 시간은 사전 없이 알파벳을 처음부터 대입하는 '순수 무차별 대입' 기준이므로, 실제 해킹 1순위인 '사전 대입 공격(Dictionary Attack)' 적용 시 500개 모두 표기 시간과 무관하게 1초 이내 즉시 뚫립니다.",
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
     ),
     "t3": (
         "자체 학습 예측 모델 & 공개 데이터 검증 기준",
-        "외부 API를 사용하지 않고, Kaggle Password Metrics Dataset(고유 25,000건)의 20개 구조적 피처로 학습한 Random Forest 회귀 모델과 상위 500개 흔한 비밀번호 목록(Information is Beautiful)을 결합해 예상 버팀 시간과 보안 등급을 산출합니다.",
+        "외부 API를 사용하지 않고, Kaggle 고유 25,000건의 20개 구조적 피처로 학습한 Random Forest 회귀 모델과 상위 500개 흔한 비밀번호 사전을 결합해 진단합니다. "
+        "원본 데이터의 무차별 대입 수식이 놓치는 취약 습관(연속 문자열·반복 문자·연도/날짜 포함)에는 별도 로그 페널티를 차감하고, 흔한 비밀번호 Top 500 일치 시 사전 공격 기준(1초 이하)으로 즉시 하향 보정합니다.",
         [
             ("학습 데이터 출처: Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
             ("흔한 목록 출처: Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")
@@ -162,7 +168,7 @@ def head(title, take, table_fn=None):
 
 def source(key):
     n, t, links = SRC[key]
-    with st.expander("데이터 출처 · 집계 기준 · 한계"):
+    with st.expander("데이터 출처 · '초(시간)' 계산 기준 · 한계"):
         link_md = " &nbsp;|&nbsp; ".join(f"🔗 [{label}]({url})" for label, url in links)
         st.markdown(f"**{n}**\n\n{t}\n\n{link_md}")
 
@@ -178,9 +184,9 @@ def tile_grid(qq):
         p, q_, u = (A, B, t * 2) if t < .5 else (B, Cc, (t - .5) * 2)
         return "rgb(%d,%d,%d)" % tuple(int(p[k] + (q_[k] - p[k]) * u) for k in range(3))
     cells = "".join(
-        f'<div class="tl" style="background:{col(v)};animation-delay:{min(i,20)*30}ms" title="{_html.escape(str(w))} · {human(s_)}">'
+        f'<div class="tl" style="background:{col(v)};animation-delay:{min(i,20)*30}ms" title="{_html.escape(str(w))} · 온라인 무차별 {human(s_)} / 오프라인 {human(of_)} (사전 공격 시 즉시)">'
         f'<span class="rk">{int(r)}위</span><b>{_html.escape(str(w))}</b><span class="tm">{human(s_)}</span></div>'
-        for i, (r, w, v, s_) in enumerate(zip(qq["rank"], qq.password, qq.lon, qq.online_sec))
+        for i, (r, w, v, s_, of_) in enumerate(zip(qq["rank"], qq.password, qq.lon, qq.online_sec, qq.offline_crack_sec))
     )
     md(f'<div class="tg">{cells}</div>')
 
@@ -344,7 +350,7 @@ def multi_pick(col, label, options, key):
 def filters(n=3): return st.columns([2, 2, 3][:n], vertical_alignment="center")
 
 def p_intro():
-    head("질문 0. 비밀번호가 '뚫린다'는 건 무슨 뜻일까?", "처음 보시는 분을 위한 요약판입니다. 아래 기준을 바꾸면 숫자와 차트가 함께 바뀝니다.")
+    head("질문 0. 비밀번호가 '뚫린다'는 건 무슨 뜻이고, '초(시간)'는 어떻게 계산될까?", "이 대시보드의 시간(초)은 모든 조합을 처음부터 대입하는 '무차별 대입(Brute-force)' 이론치입니다. 아래 기준을 바꾸면 숫자와 차트가 함께 바뀝니다.")
     fl = filters(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
     tk = fl[0].select_slider("이 시간 안에 뚫리면 '위험'으로 셉니다", options=list(TS), value="1년", key="i_t"); T = TS[tk]
     Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 24, 8, key="i_l")
@@ -352,19 +358,19 @@ def p_intro():
 
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
     ins(
-        f"해킹 프로그램은 비밀번호를 하나씩 대입하며 맞는 값을 찾습니다. 같은 기준({tk})으로 보면 "
-        f"균등 추출 표본 기준 <b>{pc[0]:.0f}%</b>(실제 이용자 분포와 다름), 흔한 비밀번호 목록은 온라인 <b>{pc[1]:.0f}%</b>·오프라인 <b>{pc[2]:.0f}%</b>가 해당 시간 안에 뚫립니다. "
-        f"공격 경로(온라인 로그인 창 vs 유출 파일 오프라인 해독)에 따라 위험도가 극명하게 갈립니다.",
-        GREEN, "한눈에 보기"
+        f"여기서 <b>'뚫리는 시간(초)'</b>은 사전 없이 가능한 모든 문자 조합(Nᴸ)을 기계적으로 대입할 때 걸리는 시간입니다. "
+        f"같은 기준({tk})에서 균등 표본의 <b>{pc[0]:.0f}%</b>, 흔한 비밀번호는 온라인(초당 10회 대입) <b>{pc[1]:.0f}%</b> · 오프라인 유출 해시(초당 10억 회 대입) <b>{pc[2]:.0f}%</b>가 뚫립니다. "
+        f"단, 실제 해커가 1순위로 쓰는 <b>'사전 대입 공격'</b> 앞에서는 흔한 비밀번호 500개 모두 표기 시간과 무관하게 <b>1초 이내 즉시</b> 해독됩니다.",
+        GREEN, "시간(초)의 의미"
     )
 
     gap = float((P.lon - P.lof).median())
     slp = float(np.polyfit(M.length, M.lc, 1)[0])
     infographic([
         ("📦", f"{len(M) + len(P):,}", "개", f"분석 데이터 (고유 피처 표본 {len(M):,}개 + 흔한 목록 {len(P)}개)"),
-        ("🔓", f"{pc[1]:.0f}", "%", f"흔한 비밀번호 중 {tk} 안에 로그인 창 공격으로 뚫리는 비율"),
-        ("⚡", f"10{sup(round(gap))}", "배", "오프라인 유출 파일 대입이 온라인 로그인 공격보다 빠른 배율(중앙값)"),
-        ("📏", f"×{10 ** slp:.0f}", "배 / 1자", "비밀번호가 1자 길어질 때 뚫리는 시간이 늘어나는 평균 배율")
+        ("🔓", f"{pc[1]:.0f}", "%", f"흔한 비밀번호 중 {tk} 안에 로그인 창 무차별 대입으로 뚫리는 비율"),
+        ("⚡", f"10{sup(round(gap))}", "배", "오프라인(초당 10억 회)이 온라인(초당 10회) 대입보다 빠른 배율"),
+        ("📏", f"×{10 ** slp:.0f}", "배 / 1자", "비밀번호가 1자 길어질 때 무차별 대입 시간이 늘어나는 평균 배율")
     ])
 
     x1, x2, x3 = st.columns([3.5, 3.2, 3.3])
@@ -449,14 +455,14 @@ def p_intro():
         tick_axis(fig, min(y_i.min(), -2), max(y_i.max(), math.log10(YR) + 1))
         show(style(fig, 310, t=34), "i3")
 
-    with st.expander("데이터 출처 요약"):
+    with st.expander("데이터 출처 · '초(시간)'의 계산 기준 요약"):
         st.markdown(
-            "1. **Password Metrics Dataset** (고유 피처 25,000건 추출): [Kaggle 바로가기](https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset)\n"
-            "2. **Password Strength and Vulnerability Dataset** (흔한 비밀번호 500건): [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)"
+            "- **Password Metrics Dataset (고유 25,000건):** 문자 풀 크기($N$)와 길이($L$)의 경우의 수($N^L$) 기반 무차별 대입 시간(초) — [Kaggle 바로가기](https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset)\n"
+            "- **Password Strength Dataset (흔한 500건):** 온라인(초당 10회 대입) vs 오프라인(초당 10억 회 대입) 무차별 대입 시간 비교. 실제 사전 공격 시에는 모두 즉시 해독됨 — [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)"
         )
 
 def p_leak():
-    head("질문 1. 비밀번호가 길수록 얼마나 오래 버틸까?", "고유 비밀번호 피처 25,000개를 등급과 길이별로 살펴봅니다. (원본 데이터는 등급별 균등 추출 표본입니다)")
+    head("질문 1. 비밀번호가 길수록 얼마나 오래 버틸까?", "고유 피처 25,000개의 경우의 수(N^L) 기반 무차별 대입 시간(초)을 살펴봅니다. (원본은 등급별 약 5,000건씩 추출한 균등 표본입니다)")
     fl = filters()
     gs = multi_pick(fl[0], "강도 등급", ORDER, "a_g")
     lr = fl[1].slider("길이 범위(자)", 4, 63, (4, 40), key="a_l")
@@ -531,11 +537,17 @@ def p_leak():
         fig.update_layout(showlegend=False)
         show(style(fig), "a3")
 
-    ins(f"선택한 균등 표본 {len(f):,}개 중 {(f.crack_time_sec <= YR).mean():.0%}가 1년 안에 뚫립니다. 길이 중앙값 {int(f.length.median())}자 표본의 뚫리는 시간 중앙값은 {human(f.crack_time_sec.median())}입니다.")
+    ins(
+        f"선택한 균등 표본 {len(f):,}개 중 {(f.crack_time_sec <= YR).mean():.0%}가 무차별 대입 기준 1년 안에 뚫립니다(길이 중앙값 {int(f.length.median())}자 · 중앙값 {human(f.crack_time_sec.median())}). "
+        f"단, 이 시간은 경우의 수(Nᴸ) 기반 이론치이므로 연도·키보드 패턴이 섞이면 실제 방어 시간은 이보다 훨씬 짧아집니다."
+    )
     source("t1")
 
 def p_common():
-    head("질문 2. 흔한 비밀번호는 얼마나 빨리 뚫릴까?", "온라인 = 로그인 창 직접 입력 공격(느림), 오프라인 = 유출된 해시 파일을 컴퓨터로 대량 대입하는 공격(매우 빠름)입니다.")
+    head(
+        "질문 2. 흔한 비밀번호는 얼마나 빨리 뚫릴까?",
+        "온라인 = 로그인 창 무차별 대입(초당 10회 가정), 오프라인 = 유출 해시 대량 대입(초당 10억 회 가정, 10⁸배 빠름)입니다. 실제 '사전 공격' 시에는 500개 모두 1초 내 즉시 뚫립니다."
+    )
     fl = filters()
     n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n")
     allc = sorted(P.category.unique())
@@ -551,8 +563,8 @@ def p_common():
     kpis([
         ("표시 중 비밀번호", len(q), 0, "개"),
         ("가장 많은 종류", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"),
-        ("온라인 공격 · 중앙값", human(q.online_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
-        ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
+        ("온라인 무차별 · 중앙값", human(q.online_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
+        ("오프라인 유출 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("온라인 · 1일 안에 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"),
         ("오프라인 · 1초 안에 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")
     ])
@@ -560,7 +572,11 @@ def p_common():
     x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
         tbl_b1 = lambda: st.dataframe(q.assign(온라인=q.online_sec.map(human), 오프라인=q.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
-        head(f"가장 흔한 비밀번호 {len(q)}개, 얼마나 빨리 뚫릴까?(타일 지도)", "절대 시간 기준 색상입니다(빨강=즉시~수분, 노랑=수일~수개월, 초록=1년 이상). 칸이 많으면 스크롤해 보세요.", table_fn=tbl_b1)
+        head(
+            f"가장 흔한 비밀번호 {len(q)}개, 얼마나 빨리 뚫릴까?(타일 지도)",
+            "온라인 무차별 대입 기준 색상입니다. 글자 수가 길어 초록색(수년)으로 보여도, 유출 파일(오프라인)이나 사전 공격 앞에서는 즉시 뚫리는 '보안 착시'입니다.",
+            table_fn=tbl_b1
+        )
         tile_grid(q)
 
     with x2:
@@ -571,16 +587,20 @@ def p_common():
 
     with x3:
         a_, b_ = (q.online_sec <= 86400).mean() * 100, (q.offline_crack_sec <= 86400).mean() * 100
-        head("시간이 지날수록 몇 %가 뚫릴까?(누적 면적 차트)", f"하루 안에 온라인 공격으로 {a_:.0f}%, 오프라인 공격으로 {b_:.0f}%가 뚫립니다. 곡선이 왼쪽에 치우칠수록 치명적입니다.")
+        head("시간이 지날수록 몇 %가 뚫릴까?(누적 면적 차트)", f"무차별 대입 시 하루 안에 온라인 {a_:.0f}%, 오프라인 {b_:.0f}%가 뚫립니다. 공격 속도가 1억 배 빨라 곡선이 왼쪽으로 이동합니다.")
         fig = go.Figure()
-        for nm, col, rgba, v in [("온라인(로그인 창)", BLUE, "rgba(91,141,239,.18)", q.lon), ("오프라인(유출 파일)", RED, "rgba(255,59,48,.14)", q.lof)]:
+        for nm, col, rgba, v in [("온라인(초당 10회)", BLUE, "rgba(91,141,239,.18)", q.lon), ("오프라인(초당 10억 회)", RED, "rgba(255,59,48,.14)", q.lof)]:
             xs = np.sort(v.values); ys = np.arange(1, len(xs) + 1) / len(xs) * 100
             fig.add_trace(go.Scatter(x=xs, y=ys, name=nm, mode="lines", line=dict(color=col, width=3, shape="hv"), fill="tozeroy", fillcolor=rgba, hovertemplate="%{y:.0f}%가 뚫림<extra>" + nm + "</extra>"))
         tick_axis(fig, min(q.lon.min(), q.lof.min()), max(q.lon.max(), q.lof.max()), "x")
         fig.update_yaxes(title="뚫린 비율(%)", range=[0, 102])
         show(style(fig), "b3")
 
-    ins(f"표시 중 {len(q)}개 중 {(q.online_sec <= 86400).mean():.0%}는 로그인 창 공격에도 하루 안에 뚫리고, 유출 파일을 대입하는 오프라인 공격은 중앙값 {human(q.offline_crack_sec.median())}이면 충분합니다.")
+    ins(
+        f"1위 'password'도 순수 무차별 대입(온라인 초당 10회)으로는 7년이 걸린다고 계산되지만, 유출 해시 오프라인 대입(초당 10억 회)으로는 <b>2초</b>, "
+        f"흔한 목록부터 넣어보는 <b>사전 대입 공격으로는 0.001초 미만</b>에 즉시 뚫립니다(현재 {len(q)}개 오프라인 중앙값: {human(q.offline_crack_sec.median())}).",
+        RED, "해석 시 주의"
+    )
     source("t2")
 
 def diagnose(pw: str):
@@ -614,7 +634,7 @@ def diagnose(pw: str):
     )
 
 def p_check():
-    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 서버에 저장되지 않습니다. 고유 데이터 25,000건으로 학습한 ML 예측 모델과 흔한 비밀번호 500개 DB를 결합해 진단합니다.")
+    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 서버에 저장되지 않습니다. 무차별 대입 ML 예측치에 '패턴 감점'과 '흔한 비밀번호 사전 검증'을 결합해 현실적인 방어 시간을 진단합니다.")
 
     with st.container(key="chk_panel"):
         md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
@@ -665,13 +685,13 @@ def p_check():
                 <div>
                     <div class="res-hdr">
                         <span>🤖 ML 예측 기반 정밀 진단 리포트</span>
-                        <span style="font-size:12px;color:#5b6472;font-weight:600">Random Forest 예측</span>
+                        <span style="font-size:12px;color:#5b6472;font-weight:600">Random Forest + 패턴 보정</span>
                     </div>
                     <div class="stat-grid">
                         <div class="stat-box">
                             <div class="stat-lbl">예상 뚫리는 시간</div>
                             <div class="stat-val">{human(d['est_sec'])}</div>
-                            <div class="stat-sub">구조·패턴 종합 산출</div>
+                            <div class="stat-sub">무차별 대입 + 패턴·사전 감점</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-lbl">표본 내 보안 순위</div>
@@ -689,7 +709,7 @@ def p_check():
         with c3:
             tips = []
             if d["common"]:
-                tips.append(("warn", "긴급", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 사전 대입 공격으로 1초 내에 뚫립니다."))
+                tips.append(("warn", "긴급", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 무차별 대입 시간과 무관하게 사전 대입 공격으로 1초 내에 뚫립니다."))
             if d["L"] < 12:
                 tips.append(("norm", "길이 보강", f"현재 길이(<b>{d['L']}자</b>)는 다소 짧습니다. 최소 12자 이상으로 늘리면 방어 시간이 기하급수적으로 증가합니다."))
             if not (d["up"] and d["dg"] and d["sp"]):
