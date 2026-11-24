@@ -52,7 +52,7 @@ def head(title, take):
 def source(key):
     n, t = SRC[key]
     with st.expander("데이터 출처 · 집계 기준 · 한계"): st.markdown(f"**{n}**\n\n{t}")
-def ins(text, color=BLUE): md(f'<div class="ins" style="border-left-color:{color}"><b>핵심 결론</b> {text}</div>')
+def ins(text, color=BLUE, label="핵심 결론"): md(f'<div class="ins" style="border-left-color:{color}"><b>{label}</b> {text}</div>')
 def kpis(items):
     cards = "".join(f'<div class="c" style="animation-delay:{i*80}ms"><div class="l">{l}</div><div class="v" style="font-size:{26 if isinstance(v,(int,float)) else 18}px"><span class="n" data-v="{v if isinstance(v,(int,float)) else ""}" data-d="{d}">{v if not isinstance(v,(int,float)) else f"{v:,.{d}f}"}</span><span class="u">{u}</span></div></div>' for i, (l, v, d, u) in enumerate(items))
     h = f"""<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"><style>
@@ -131,11 +131,11 @@ def filters(n=3): return st.columns([2, 2, 3][:n], vertical_alignment="center")
 
 def p_intro():
     head("질문 0. 비밀번호가 '뚫린다'는 건 무슨 뜻일까?", "처음 보시는 분을 위한 요약판입니다. 아래 기준을 바꾸면 숫자와 차트가 함께 바뀝니다.")
-    ins("해킹 프로그램은 비밀번호를 하나씩 넣어 보며 맞는 것을 찾습니다. 이 대시보드의 <b>'뚫리는 시간'</b>은 그 프로그램이 맞힐 때까지 걸리는 시간이고, <b>길수록 안전</b>합니다. 예를 들어 숫자 4자리는 가능한 조합이 1만 개뿐입니다.", GREEN)
     fl = filters(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
     tk = fl[0].select_slider("이 시간 안에 뚫리면 '위험'으로 셉니다", options=list(TS), value="1년", key="i_t"); T = TS[tk]
     Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 30, 8, key="i_l"); fl[2].caption("↻ 기준을 바꾸면 아래 숫자와 차트가 바뀝니다")
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
+    ins(f"해킹 프로그램은 비밀번호를 하나씩 넣어 보며 맞는 것을 찾습니다. 이 대시보드의 <b>뚫리는 시간</b>은 그 프로그램이 맞힐 때까지 걸리는 시간이고 길수록 안전합니다(숫자 4자리는 가능한 조합이 1만 개뿐). 같은 기준({tk})으로 보면 유출 표본의 {pc[0]:.0f}%, 흔한 비밀번호는 온라인 {pc[1]:.0f}%·오프라인 {pc[2]:.0f}%가 뚫립니다. 어디서 공격받느냐에 따라 위험이 크게 달라집니다.", GREEN, "한눈에 보기")
     kpis([("분석한 비밀번호", len(M), 0, "개"), ("흔한 비밀번호 목록", len(P), 0, "개"), ("합성 실험 표본", len(C), 0, "개"), (f"{tk} 안에 뚫림 · 유출 표본", pc[0], 0, "%"), (f"{tk} 안에 뚫림 · 흔한 것(온라인)", pc[1], 0, "%"), (f"{tk} 안에 뚫림 · 흔한 것(오프라인)", pc[2], 0, "%")])
     x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
@@ -161,7 +161,6 @@ def p_intro():
         sk = M.assign(구간=pd.cut(M.length, [0, 7, 11, 15, 20, 70], labels=bins).astype(str), 등급=M.등급.astype(str)).groupby(["구간", "등급"]).size().reset_index(name="n")
         fig = go.Figure(go.Sankey(node=dict(label=bins + ORDER, color=["#9db7ee"] * 5 + [CCOL[o] for o in ORDER], pad=14, thickness=14), link=dict(source=[bins.index(a) for a in sk.구간], target=[5 + ORDER.index(b) for b in sk.등급], value=sk.n, color="rgba(91,141,239,.22)")))
         show(style(fig, 300), "i3")
-    ins(f"같은 기준({tk})으로 보면 유출 표본의 {pc[0]:.0f}%, 흔한 비밀번호는 온라인 {pc[1]:.0f}%·오프라인 {pc[2]:.0f}%가 뚫립니다. 어디서 공격받느냐에 따라 위험이 크게 달라집니다.", GREEN)
     with st.expander("데이터 출처 · 지도(지역) 시각화를 넣지 않은 이유"):
         st.markdown("세 데이터 모두 국가·지역 정보가 없어 지도 시각화는 넣지 않았습니다. 데이터에 없는 위치를 임의로 만들어 붙이는 것은 정직한 시각화가 아니라고 판단했습니다. 데이터별 출처와 집계 기준은 각 페이지 하단에 있습니다.")
 
@@ -202,18 +201,24 @@ def p_common():
     kpis([("표시 중 비밀번호", len(q), 0, "개"), ("가장 많은 종류", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"), ("온라인 공격 · 중앙값", human(q.online_sec.median()), 0, ""), ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()), 0, ""), ("온라인 · 1일 안에 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"), ("오프라인 · 1초 안에 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")])
     x1, x2, x3 = st.columns([4, 3, 3]); qq = q.head(20)
     with x1:
-        head(f"가장 흔한 비밀번호 TOP {len(qq)}(점 그래프)", "점이 왼쪽일수록 빨리 뚫립니다(온라인 공격 기준). 눈금은 10배씩 커지는 로그입니다." + (" 순위 차트는 상위 20개만 보여 줍니다." if len(q) > 20 else ""))
-        lab = [f"{int(r)}위 {w}" for r, w in zip(qq["rank"], qq.password)]; fig = go.Figure(go.Scatter(x=qq.lon, y=lab, mode="markers", marker=dict(size=11, color=BLUE), customdata=[human(v) for v in qq.online_sec], hovertemplate="%{y}<br>온라인 %{customdata}<extra></extra>"))
-        fig.update_yaxes(autorange="reversed", categoryorder="array", categoryarray=lab); tick_axis(fig, qq.lon.min(), qq.lon.max(), "x"); fig.update_xaxes(title="뚫리는 시간(온라인 공격)"); show(style(fig), "b1")
+        head(f"가장 흔한 비밀번호 TOP {len(qq)}, 얼마나 빨리 뚫릴까?(타일 지도)", "칸 하나가 비밀번호 하나입니다. 빨강일수록 빨리 뚫리고(온라인 공격 기준) 초록일수록 오래 걸립니다." + (" 상위 20개만 보여 줍니다." if len(q) > 20 else ""))
+        nc = 5; nr = max(1, math.ceil(len(qq) / nc)); pad = nr * nc - len(qq)
+        zz = np.array(list(qq.lon) + [np.nan] * pad).reshape(nr, nc); tt = np.array([f"<b>{int(r)}위</b><br>{w}<br>{human(v)}" for r, w, v in zip(qq["rank"], qq.password, qq.online_sec)] + [""] * pad, dtype=object).reshape(nr, nc)
+        fig = go.Figure(go.Heatmap(z=zz, text=tt, texttemplate="%{text}", textfont=dict(size=11), hovertemplate="%{text}<extra></extra>", colorscale=[[0, "#ff9a8f"], [.5, "#ffe49a"], [1, "#8fdcb0"]], showscale=False, xgap=4, ygap=4))
+        fig.update_xaxes(visible=False); fig.update_yaxes(visible=False, autorange="reversed"); show(style(fig, 300), "b1")
         with st.popover("📋 표 보기"): st.dataframe(qq.assign(온라인=qq.online_sec.map(human), 오프라인=qq.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
     with x2:
         head("어떤 종류가 가장 많을까?(도넛 차트)", f"가장 많은 종류는 '{topc.index[0]}'({topc.iloc[0]}개)입니다. 조각이 클수록 그 종류가 많습니다.")
         fig = go.Figure(go.Pie(labels=topc.index, values=topc.values, hole=.58, sort=False, textinfo="percent", marker=dict(colors=px.colors.qualitative.Set3 * 2, line=dict(color="#fff", width=2))))
         fig.add_annotation(text=f"<b>{len(q)}개</b>", x=.5, y=.5, showarrow=False, font=dict(size=22)); show(style(fig, 300).update_layout(legend=dict(orientation="v", x=1.0, y=.5, font=dict(size=11))), "b2")
     with x3:
-        gap = (q.lon - q.lof).median(); head("공격 방식에 따른 차이(박스플롯)", f"오프라인 공격은 온라인보다 중앙값 기준 약 10^{gap:.0f}배 빠릅니다. 상자는 종류별로 대부분의 값이 몰린 범위입니다.")
-        fig = go.Figure([go.Box(x=q.lon, y=q.category, name="온라인", orientation="h", marker_color=BLUE, boxpoints=False), go.Box(x=q.lof, y=q.category, name="오프라인", orientation="h", marker_color=RED, boxpoints=False)])
-        fig.update_layout(boxmode="group"); tick_axis(fig, min(q.lon.min(), q.lof.min()), max(q.lon.max(), q.lof.max()), "x"); show(style(fig), "b3")
+        a_, b_ = (q.online_sec <= 86400).mean() * 100, (q.offline_crack_sec <= 86400).mean() * 100
+        head("시간이 지날수록 몇 %가 뚫릴까?(누적 면적 차트)", f"가로는 걸리는 시간, 세로는 그 시간 안에 뚫린 비율입니다. 하루 안에 온라인 공격으로 {a_:.0f}%, 오프라인 공격으로 {b_:.0f}%가 뚫립니다. 선이 왼쪽에 있을수록 빨리 뚫립니다.")
+        fig = go.Figure()
+        for nm, col, rgba, v in [("온라인(로그인 창)", BLUE, "rgba(91,141,239,.18)", q.lon), ("오프라인(유출 파일)", RED, "rgba(255,59,48,.14)", q.lof)]:
+            xs = np.sort(v.values); ys = np.arange(1, len(xs) + 1) / len(xs) * 100
+            fig.add_trace(go.Scatter(x=xs, y=ys, name=nm, mode="lines", line=dict(color=col, width=3, shape="hv"), fill="tozeroy", fillcolor=rgba, hovertemplate="%{y:.0f}%가 뚫림<extra>" + nm + "</extra>"))
+        tick_axis(fig, min(q.lon.min(), q.lof.min()), max(q.lon.max(), q.lof.max()), "x"); fig.update_yaxes(title="뚫린 비율(%)", range=[0, 102]); show(style(fig), "b3")
     ins(f"표시 중 {len(q)}개 중 {(q.online_sec <= 86400).mean():.0%}는 로그인 창 공격에도 하루 안에 뚫리고, 유출 파일을 대입하는 공격은 중앙값 {human(q.offline_crack_sec.median())}이면 충분합니다.")
     source("t2")
 
@@ -226,17 +231,19 @@ def p_safe():
     kpis([("표본", len(h), 0, "개"), ("평균 강도 점수", float(h.Strength_Score.mean()), 1, "점"), ("평균 길이", float(h.Password_Length.mean()), 1, "자"), ("High(위험 높음)", (h.Breach_Risk == "High").mean() * 100, 1, "%"), ("Medium(보통)", (h.Breach_Risk == "Medium").mean() * 100, 1, "%"), ("Low(위험 낮음)", (h.Breach_Risk == "Low").mean() * 100, 1, "%")])
     x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
-        head("길이 × 문자 종류 → 평균 점수(히트맵)", "가로는 길이, 세로는 포함한 문자 종류(대문자·숫자·특수문자) 수입니다. 초록일수록 강하고 빨강일수록 약합니다.")
-        k = h.assign(종류=(h.Uppercase_Count > 0).astype(int) + (h.Digit_Count > 0) + (h.Special_Char_Count > 0)); pv = k.pivot_table(index="종류", columns="Password_Length", values="Strength_Score", aggfunc="mean").sort_index()
-        fig = go.Figure(go.Heatmap(z=pv.values, x=pv.columns, y=[f"{i}종류" for i in pv.index], colorscale=[[0, "#ffd9d6"], [.5, "#fff2dc"], [1, "#4cc38a"]], zmin=0, zmax=100, colorbar=dict(title="점수", thickness=10), hovertemplate="길이 %{x}자 · %{y}<br>평균 %{z:.0f}점<extra></extra>"))
-        fig.update_xaxes(title="길이(자)"); show(style(fig), "c1")
-        with st.popover("📋 표 보기"): st.dataframe(pv.round(1).rename(columns=str).reset_index(), hide_index=True)
+        head("길이 × 문자 종류 → 평균 점수(버블 차트)", "버블 크기는 비밀번호 수, 색은 평균 점수입니다(초록일수록 강함). 오른쪽 위로 갈수록 강해지는지 보세요.")
+        k = h.assign(종류=(h.Uppercase_Count > 0).astype(int) + (h.Digit_Count > 0) + (h.Special_Char_Count > 0)); bb = k.groupby(["Password_Length", "종류"]).Strength_Score.agg(["mean", "size"]).reset_index()
+        fig = go.Figure(go.Scatter(x=bb.Password_Length, y=bb.종류, mode="markers", marker=dict(size=8 + 34 * np.sqrt(bb["size"] / bb["size"].max()), color=bb["mean"], colorscale=[[0, "#ff8a80"], [.5, "#ffe08a"], [1, "#4cc38a"]], cmin=0, cmax=100, colorbar=dict(title="점수", thickness=10), line=dict(color="#fff", width=1)),
+            customdata=np.c_[bb["mean"], bb["size"]], hovertemplate="길이 %{x}자 · %{y}종류<br>평균 %{customdata[0]:.0f}점<br>%{customdata[1]:.0f}개<extra></extra>"))
+        fig.update_xaxes(title="길이(자)"); fig.update_yaxes(title="포함한 문자 종류 수", tickvals=[0, 1, 2, 3], range=[-.5, 3.5]); show(style(fig), "c1")
+        with st.popover("📋 표 보기"): st.dataframe(bb.assign(평균점수=bb["mean"].round(1)).rename(columns={"Password_Length": "길이", "size": "표본"})[["길이", "종류", "표본", "평균점수"]], hide_index=True)
     with x2:
-        head("문자 종류를 넣으면 점수가 얼마나 오를까?(아령 차트)", "회색 점은 넣지 않은 비밀번호, 파랑 점은 넣은 비밀번호의 평균 점수입니다. 길이 효과가 섞여 있으니 길이 범위를 좁혀 보세요.")
-        rows = [(nm, h[h[c] == 0].Strength_Score.mean(), h[h[c] > 0].Strength_Score.mean()) for nm, c in [("대문자", "Uppercase_Count"), ("숫자", "Digit_Count"), ("특수문자", "Special_Char_Count")]]; rows = [r for r in rows if np.isfinite(r[1]) and np.isfinite(r[2])]; fig = go.Figure()
-        for nm, a, b in rows: fig.add_trace(go.Scatter(x=[a, b], y=[nm, nm], mode="lines", line=dict(color="#d2d2d7", width=4), showlegend=False, hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=[r[1] for r in rows], y=[r[0] for r in rows], mode="markers", name="넣지 않음", marker=dict(size=14, color=GRAY))); fig.add_trace(go.Scatter(x=[r[2] for r in rows], y=[r[0] for r in rows], mode="markers", name="넣음", marker=dict(size=14, color=BLUE)))
-        fig.update_xaxes(title="평균 강도 점수", range=[0, 100]); show(style(fig), "c2")
+        head("문자 종류를 넣으면 점수가 얼마나 오를까?(막대 차트)", "각 문자 종류를 넣은 비밀번호와 넣지 않은 비밀번호의 평균 점수 차이입니다. 긴 비밀번호일수록 종류도 많아 길이 효과가 섞여 있으니 길이 범위를 좁혀 보세요.")
+        rows = [(nm, h[h[c] > 0].Strength_Score.mean() - h[h[c] == 0].Strength_Score.mean()) for nm, c in [("대문자", "Uppercase_Count"), ("숫자", "Digit_Count"), ("특수문자", "Special_Char_Count")]]; rows = [r for r in rows if np.isfinite(r[1])]
+        if not rows: st.info("비교할 표본이 부족합니다. 길이 범위를 넓혀 보세요.")
+        else:
+            ds = [r[1] for r in rows]; fig = go.Figure(go.Bar(x=ds, y=[r[0] for r in rows], orientation="h", marker_color=[BLUE if d_ >= 0 else RED for d_ in ds], text=[f"{d_:+.0f}점" for d_ in ds], textposition="outside", cliponaxis=False))
+            fig.update_xaxes(title="평균 점수 차이(점)", range=[min(0, min(ds)) * 1.3 - 1, max(0, max(ds)) * 1.3 + 1]); fig.update_yaxes(autorange="reversed"); show(style(fig), "c2")
     with x3:
         head("점수는 어디에 몰려 있을까?(히스토그램)", "점수 구간별 개수를 위험도 색으로 쌓았습니다. 위험도는 점수 구간으로 정해진 값이라 색이 깔끔하게 나뉩니다.")
         fig = go.Figure([go.Histogram(x=h[h.Breach_Risk == r].Strength_Score, name=r, marker_color=RCOL[r], xbins=dict(start=0, end=100, size=5)) for r in ["High", "Medium", "Low"]]); fig.update_layout(barmode="stack"); fig.update_xaxes(title="강도 점수"); fig.update_yaxes(title="개수"); show(style(fig), "c3")
@@ -263,7 +270,7 @@ def diagnose(pw, use_hibp):
 
 def p_check():
     head("질문 4. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않습니다. 유출 확인에는 암호화한 값의 앞 5글자만 보냅니다.")
-    ex = st.columns([1, 1, 1, 1.4]); u = ex[3].checkbox("이미 유출된 적 있는지도 확인", value=True, key="d_u")
+    ex = st.columns(3); u = True
     for i, (col, (lab, v)) in enumerate(zip(ex[:3], [("예시 · 흔한 비밀번호", "password123"), ("예시 · 규칙형", "Summer2024!"), ("예시 · 긴 무작위", "vK9#mQ2$zL7@pW4xR8")])):
         if col.button(lab, key=f"d_ex{i}"): diagnose(v, u)
     with st.form("f", clear_on_submit=True, border=False):
