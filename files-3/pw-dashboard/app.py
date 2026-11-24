@@ -31,7 +31,10 @@ def tick_axis(fig, lo, hi, axis="y"):
         x = math.log10(v)
         if lo - .3 <= x <= hi + .3 and (not keep or x - keep[-1] >= span / 6): keep.append(x)
     kw = dict(tickvals=keep, ticktext=[human(10 ** x) for x in keep], range=[lo - .4, hi + .4], tickangle=0)
-    fig.update_yaxes(**kw) if axis == "y" else fig.update_xaxes(**kw)
+    if axis == "y":
+        fig.update_yaxes(**kw)
+    else:
+        fig.update_xaxes(**kw)
 def style(fig, h=310):
     fig.update_layout(height=h, margin=dict(l=12, r=16, t=26, b=14), paper_bgcolor="#fff", plot_bgcolor="#fff", font=dict(family=FONT, size=12, color="#1d1d1f"),
         legend=dict(orientation="h", y=1.1, x=0, font=dict(size=11)), hoverlabel=dict(font_family=FONT, bgcolor="white"))
