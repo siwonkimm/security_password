@@ -173,7 +173,7 @@ def source(key):
         st.markdown(f"**{n}**\n\n{t}\n\n{link_md}")
 
 def ins(text, color=BLUE, label="핵심 결론"):
-    md(f'<div class="ins" style="border-left-color:{color}"><b>{label}</b> {text}</div>')
+    md(f'<div class="ins" style="border-left-color:{color}"><b>{label}</b>{text}</div>')
 
 def tile_grid(qq):
     lo, hi = 0.0, 7.5
@@ -278,11 +278,11 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 .st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:center}.st-key-hdr [role="radiogroup"] label{padding:8px 16px;border-radius:14px;background:#1a2547;border:1px solid #2a3868}
 .st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:14px;height:46px!important;min-height:46px!important;padding:0 16px!important}
 
-.sec{padding:4px 2px 4px;min-height:72px}.sec .t{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.5px;color:#5b6472;margin-top:4px;line-height:1.5}
+.sec{padding:4px 2px 4px;min-height:72px}.sec .t{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.5px;color:#5b6472;margin-top:4px;line-height:1.5;word-break:keep-all}
 .bd{background:#5b8def;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px}
 div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe .9s cubic-bezier(.2,.8,.2,1) both;transition:box-shadow .3s}
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
-.ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:14px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both}.ins b{margin-right:8px}
+.ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:14px;line-height:1.65;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both;word-break:keep-all}.ins>b:first-child{margin-right:8px}
 
 /* 질문 3 결과 카드 */
 .res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:462px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
@@ -308,7 +308,7 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 .spl div{color:#fff;font-size:clamp(30px,6vw,64px);font-weight:800;letter-spacing:-.03em;animation:si 1.4s cubic-bezier(.2,.8,.2,1) both}
 @keyframes si{from{opacity:0;transform:scale(.92);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}@keyframes so{0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
 .tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .4s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:36px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:13px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
+.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:36px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:13px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96;word-break:keep-all}
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
 .st-key-chk_panel{background:#fff;border-radius:22px;padding:14px 18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
 .st-key-chk_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
