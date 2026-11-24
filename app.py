@@ -305,7 +305,11 @@ div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hid
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
 .ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:14px;line-height:1.65;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both;word-break:keep-all}.ins>b:first-child{margin-right:8px}
 
-/* 질문 3 결과 카드 */
+/* 질문 3 결과 카드 및 예시 표시 배너 */
+.diag-target{background:#fff;border-radius:16px;padding:11px 18px;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border:1px solid #e2e8f2;animation:up .4s both}
+.diag-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:8px;background:#eef3ff;color:#2b5fc7}
+.diag-badge.user{background:#f2f4f8;color:#4b5563}
+.diag-code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:14.5px;font-weight:800;background:#f5f7fa;color:#1d1d1f;padding:4px 12px;border-radius:8px;border:1px solid #dce2ec;letter-spacing:.03em}
 .res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:462px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
 .res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
@@ -337,7 +341,7 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
 .st-key-chk_panel{background:#fff;border-radius:22px;padding:14px 18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
 .st-key-chk_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
-.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:44px;padding:0 10px!important;border-radius:14px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:13px;font-weight:700}
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:44px;padding:0 10px!important;border-radius:14px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:12.5px;font-weight:700}
 [data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:44px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700;font-size:13.5px}[data-testid="stForm"] input{border-radius:14px;min-height:44px}[data-testid="InputInstructions"]{display:none!important}</style>""", False)
 
 if not st.session_state.get("splash"):
@@ -628,7 +632,7 @@ def p_common():
     )
     source("t2")
 
-def diagnose(pw: str):
+def diagnose(pw: str, example_label: str = None):
     feats = extract_features(pw)
     L = feats["length"]
     low = pw.lower()
@@ -660,6 +664,9 @@ def diagnose(pw: str):
 
     st.session_state["diag"] = dict(
         L=L, score=score, est_sec=est_sec, pct=pct, common=common, hibp=hibp_cnt,
+        is_example=example_label is not None,
+        example_label=example_label,
+        example_pw=pw if example_label is not None else None,
         seq=seq, rep=rep, yr=yr, up=feats["n_upper"] > 0, dg=feats["n_digit"] > 0, sp=(feats["n_special"] + feats["n_non"]) > 0
     )
 
@@ -668,19 +675,46 @@ def p_check():
 
     with st.container(key="chk_panel"):
         md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
-        top_row = st.columns([4.6, 1.8, 1.8, 1.8], vertical_alignment="center")
+        top_row = st.columns([4.4, 1.85, 1.85, 1.9], vertical_alignment="center")
         with top_row[0]:
             with st.form("f", clear_on_submit=True, border=False):
                 fc = st.columns([3.8, 1.4], vertical_alignment="center")
                 pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (저장 안 됨)", label_visibility="collapsed")
                 if fc[1].form_submit_button("점검하기") and pw:
-                    diagnose(pw)
-        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 흔한형", "password123"), ("🧩 규칙형", "Summer2024!"), ("🎲 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
-            if col.button(lab, key=f"d_ex{i}", use_container_width=True):
-                diagnose(v)
+                    diagnose(pw, example_label=None)
+        examples = [
+            ("🔓 예시: 흔한형", "흔한형", "password123"),
+            ("🧩 예시: 규칙형", "규칙형", "Summer2024!"),
+            ("🎲 예시: 무작위형", "무작위형", "vK9#mQ2$zL7@pW4xR8")
+        ]
+        for i, (col, (btn_lab, ex_name, ex_val)) in enumerate(zip(top_row[1:], examples)):
+            if col.button(btn_lab, key=f"d_ex{i}", use_container_width=True):
+                diagnose(ex_val, example_label=ex_name)
 
     d = st.session_state.get("diag")
     if d:
+        if d.get("is_example"):
+            md(
+                f'<div class="diag-target">'
+                f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+                f'<span class="diag-badge">🧪 예시 테스트 ({_html.escape(d["example_label"])})</span>'
+                f'<span style="font-size:13.5px;font-weight:600;color:#5b6472">적용된 예시 비밀번호:</span>'
+                f'<span class="diag-code">{_html.escape(d["example_pw"])}</span>'
+                f'</div>'
+                f'<span style="font-size:12px;color:#6e6e73;font-weight:600">길이 {d["L"]}자</span>'
+                f'</div>'
+            )
+        else:
+            md(
+                f'<div class="diag-target">'
+                f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+                f'<span class="diag-badge user">🔒 직접 입력 진단</span>'
+                f'<span style="font-size:13px;font-weight:600;color:#5b6472">입력하신 비밀번호는 보안상 화면에 표시·저장되지 않습니다.</span>'
+                f'</div>'
+                f'<span style="font-size:12px;color:#6e6e73;font-weight:600">길이 {d["L"]}자</span>'
+                f'</div>'
+            )
+
         s = d["score"]
         hibp_cnt = d.get("hibp")
         leaked = hibp_cnt is not None and hibp_cnt > 0
