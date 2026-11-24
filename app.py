@@ -1,6 +1,6 @@
-import hashlib, html as _html, inspect, math, re, sys
+import html as _html, inspect, math, re
 from pathlib import Path
-import numpy as np, pandas as pd, plotly.graph_objects as go, plotly.express as px, requests, streamlit as st
+import numpy as np, pandas as pd, plotly.graph_objects as go, plotly.express as px, streamlit as st
 import streamlit.components.v1 as components
 from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestRegressor
@@ -19,7 +19,7 @@ KO = {"Very week": "매우 약함", "Week": "약함", "Average": "보통", "Stro
 ORDER = list(KO.values())
 CCOL = dict(zip(ORDER, [RED, ORANGE, YEL, BLUE, GREEN]))
 YR = 31557600
-CAND = [1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e12, YR * 1e18, YR * 1e24, YR * 1e36, YR * 1e60]
+CAND = [1e-3, 1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e12, YR * 1e18, YR * 1e24, YR * 1e36]
 
 SRC = {
     "t1": (
@@ -33,11 +33,11 @@ SRC = {
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
     ),
     "t3": (
-        "Have I Been Pwned (Pwned Passwords API) & 학습 모델 기준",
-        "실제 유출 여부는 보안 연구자 Troy Hunt가 운영하는 Have I Been Pwned의 공개 API(k-Anonymity 방식, API 키 불필요 무료 개방)를 통해 SHA-1 해시 앞 5자리만 전송하여 실시간 대조합니다. 예상 뚫리는 시간은 Kaggle Password Metrics Dataset(25,000건)으로 학습한 Random Forest 회귀 모델 예측치에 패턴 페널티를 반영해 산출했습니다.",
+        "자체 학습 예측 모델 & 공개 데이터 검증 기준",
+        "외부 API를 사용하지 않고, Kaggle Password Metrics Dataset(고유 25,000건)의 20개 구조적 피처로 학습한 Random Forest 회귀 모델과 상위 500개 흔한 비밀번호 목록(Information is Beautiful)을 결합해 예상 버팀 시간과 보안 등급을 산출합니다.",
         [
-            ("Have I Been Pwned 공식 사이트 바로가기", "https://haveibeenpwned.com/Passwords"),
-            ("학습 데이터 출처 보기 (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset")
+            ("학습 데이터 출처: Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
+            ("흔한 목록 출처: Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")
         ]
     )
 }
@@ -109,7 +109,7 @@ def md(s, pad=True):
 
 def human(s):
     if s is None or not np.isfinite(s): return "측정 불가"
-    if s < 1e-3: return "즉시"
+    if s < 1e-3: return "즉시 (1ms 미만)"
     if s < 1: return f"{s*1000:.0f}밀리초"
     for lim, div, u in [(60, 1, "초"), (3600, 60, "분"), (86400, 3600, "시간"), (2629800, 86400, "일"), (YR, 2629800, "개월")]:
         if s < lim: return f"{s/div:.0f}{u}"
@@ -121,7 +121,7 @@ def tick_axis(fig, lo, hi, axis="y"):
     for v in CAND:
         x = math.log10(v)
         if lo - .3 <= x <= hi + .3 and (not keep or x - keep[-1] >= span / 6): keep.append(x)
-    kw = dict(tickvals=keep, ticktext=[human(10 ** x) for x in keep], range=[lo - .4, hi + .4], tickangle=0)
+    kw = dict(tickvals=keep, ticktext=[human(10 ** x).replace(" (1ms 미만)", "") for x in keep], range=[lo - .4, hi + .4], tickangle=0)
     if axis == "y": fig.update_yaxes(**kw)
     else: fig.update_xaxes(**kw)
 
@@ -278,17 +278,17 @@ div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hid
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
 .ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:14px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both}.ins b{margin-right:8px}
 
-/* 질문 3 결과 카드 고도화 */
+/* 질문 3 결과 카드 */
 .res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:462px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
 .res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
-.stat-box{background:#f5f7fa;border-radius:14px;padding:12px 12px;border:1px solid #e8ecf2}
-.stat-lbl{font-size:11.5px;font-weight:600;color:#6e6e73;margin-bottom:4px}
-.stat-val{font-size:17px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-sub{font-size:11px;color:#5b6472;margin-top:3px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.stat-box{background:#f5f7fa;border-radius:16px;padding:14px 16px;border:1px solid #e8ecf2}
+.stat-lbl{font-size:12px;font-weight:600;color:#6e6e73;margin-bottom:4px}
+.stat-val{font-size:21px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-sub{font-size:11.5px;color:#5b6472;margin-top:4px}
 .chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
-.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
-.tip-item{background:#f8f9fc;border-radius:12px;padding:11px 14px;margin-bottom:9px;font-size:13.2px;line-height:1.5;color:#1d1d1f;border-left:4px solid #5b8def;word-break:keep-all}
+.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
+.tip-item{background:#f8f9fc;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13.2px;line-height:1.55;color:#1d1d1f;border-left:4px solid #5b8def;word-break:keep-all}
 .tip-item.warn{border-left-color:#ff3b30;background:#fff8f7}
 .tip-item.good{border-left-color:#4cc38a;background:#f4fbf7}
 .tip-tag{display:inline-block;font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;margin-right:6px;background:#e5edff;color:#2b5fc7}
@@ -347,7 +347,7 @@ def p_intro():
     head("질문 0. 비밀번호가 '뚫린다'는 건 무슨 뜻일까?", "처음 보시는 분을 위한 요약판입니다. 아래 기준을 바꾸면 숫자와 차트가 함께 바뀝니다.")
     fl = filters(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
     tk = fl[0].select_slider("이 시간 안에 뚫리면 '위험'으로 셉니다", options=list(TS), value="1년", key="i_t"); T = TS[tk]
-    Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 30, 8, key="i_l")
+    Ln = fl[1].slider("내 비밀번호 길이(자)", 4, 24, 8, key="i_l")
     fl[2].caption("↻ 기준을 바꾸면 아래 숫자와 차트가 바뀝니다")
 
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
@@ -367,7 +367,7 @@ def p_intro():
         ("📏", f"×{10 ** slp:.0f}", "배 / 1자", "비밀번호가 1자 길어질 때 뚫리는 시간이 늘어나는 평균 배율")
     ])
 
-    x1, x2, x3 = st.columns([4, 3, 3])
+    x1, x2, x3 = st.columns([3.5, 3.2, 3.3])
     with x1:
         head("100개 중 몇 개가 뚫릴까?(와플 차트)", f"네모 1칸 = 1%, 빨강은 {tk} 안에 뚫리는 비율입니다. 유출 표본은 등급별 균등 표본이라 실제 분포가 아닙니다.")
         ttl = ["균등 추출 표본", "흔한·온라인", "흔한·오프라인"]
@@ -377,53 +377,62 @@ def p_intro():
             fig.add_trace(go.Heatmap(z=z.reshape(10, 10), colorscale=[[0, "#cfeedd"], [1, "#ff6b6b"]], showscale=False, xgap=3, ygap=3, hoverinfo="skip"), 1, i + 1)
             fig.update_xaxes(visible=False, row=1, col=i + 1); fig.update_yaxes(visible=False, autorange="reversed", row=1, col=i + 1)
         fig.update_annotations(font_size=11)
-        show(style(fig, 300, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
+        show(style(fig, 310, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
 
     with x2:
-        head("내 비밀번호 길이면 얼마나 버틸까?(막대 게이지)", "선택한 길이 ±1자 표본의 중앙값입니다. 빨강은 하루 안, 주황은 1년 안, 초록은 1년 넘게 버티는 구간입니다.")
-        sub = M[M.length.between(Ln - 1, Ln + 1)]
-        m = sub.crack_time_sec.median()
-        lm = float(np.clip(math.log10(max(m, 1e-6)), 0, 14))
-        md(f'<div style="text-align:center;font-size:32px;font-weight:800;letter-spacing:-.02em;padding:6px 0">{human(m)}</div>')
-        tv = [0, 3.556, 4.936, 7.499, 9.499, 13.499]
-        fig = go.Figure(go.Indicator(
-            mode="gauge", value=lm,
-            gauge=dict(
-                shape="bullet",
-                axis=dict(range=[0, 14], tickvals=tv, ticktext=["1초", "1시간", "1일", "1년", "100년", "100만년"]),
-                bar=dict(color="#1d1d1f", thickness=.45),
-                steps=[dict(range=[0, 4.936], color="#ffd9d6"), dict(range=[4.936, 7.499], color="#ffe9c7"), dict(range=[7.499, 14], color="#d5f3e1")]
-            )
+        head(f"{Ln}자 비밀번호, 조합별 버팀 시간(막대)", f"같은 {Ln}자라도 숫자만 쓰면 금방 뚫리지만, 특수문자를 섞으면 방어 시간이 크게 늘어납니다.")
+        sub = M[M.length == Ln]
+        if len(sub) < 30:
+            sub = M[M.length.between(Ln - 1, Ln + 1)]
+        tp_order = ["숫자만", "영문만", "영문+숫자", "특수문자 포함"]
+        tp_cols = [RED, ORANGE, BLUE, GREEN]
+        meds = [sub[sub["조합유형"] == tp].crack_time_sec.median() for tp in tp_order]
+        l_meds = [float(np.clip(math.log10(max(v, 1e-3)), -3, 16)) if pd.notna(v) else -3.0 for v in meds]
+        txt_lbl = [human(v).replace(" (1ms 미만)", "") if pd.notna(v) else "표본 없음" for v in meds]
+
+        fig = go.Figure(go.Bar(
+            y=tp_order, x=[v + 3.2 for v in l_meds], orientation="h",
+            marker_color=tp_cols, text=txt_lbl, textposition="outside", cliponaxis=False,
+            textfont=dict(size=12, weight="bold", color="#1d1d1f"),
+            hovertemplate="%{y}: %{text}<extra></extra>"
         ))
-        show(style(fig, 200, t=30).update_layout(margin=dict(l=40, r=40, t=30, b=20)), "i2")
-        st.markdown(f"길이 **{Ln}자** 안팎의 표본은 중앙값 **{human(m)}**이 걸려야 뚫립니다. (표본 {len(sub):,}개)")
+        fig.update_xaxes(
+            tickvals=[0.2, 3.2, 6.756, 8.136, 10.699, 12.699],
+            ticktext=["1ms", "1초", "1시간", "1일", "1년", "100년"],
+            range=[0, max(l_meds) + 6.5]
+        )
+        fig.update_yaxes(showgrid=False)
+        show(style(fig, 310, t=24, l=12, r=24), "i2")
 
     with x3:
-        head("길이별 강도 등급 비율(100% 누적 막대)", "막대 한 줄이 각 길이 구간의 전체(100%)입니다. 길어질수록 빨강(약함)이 줄고 초록(매우 강함)이 압도적으로 커집니다.")
-        bins = ["≤7자", "8~11자", "12~15자", "16~20자", "21자+"]
-        ct = pd.crosstab(pd.cut(M.length, [0, 7, 11, 15, 20, 70], labels=bins), M.등급, normalize="index") * 100
-        ct = ct.reindex(index=bins[::-1], columns=ORDER, fill_value=0)
+        head("길이별 버팀 시간 추세(회귀 추세선)", "파란 점은 길이별 중앙값, 점선은 지수 회귀 추세선입니다. 빨간 점선(1년) 위에 머무르려면 최소 11~12자 이상이 필요합니다.")
+        g_i = M[M.length <= 24].groupby("length").agg(n=("lc", "size"), med=("crack_time_sec", "median")).query("n>=15").reset_index()
+        y_i = np.log10(g_i.med.clip(lower=1e-3))
+        coef = np.polyfit(g_i.length, y_i, 1)
+        r2_i = float(np.corrcoef(g_i.length, y_i)[0, 1] ** 2)
+        y_fit = np.polyval(coef, g_i.length)
+
         fig = go.Figure()
-        for g_ in ORDER:
-            vals = ct[g_].values
-            fig.add_trace(go.Bar(
-                y=ct.index, x=vals, name=g_, orientation="h",
-                marker_color=CCOL[g_],
-                text=[f"{v:.0f}%" if v >= 12 else "" for v in vals],
-                textposition="inside", insidetextanchor="middle",
-                textfont=dict(color="#1d1d1f" if g_ == "보통" else "#fff", size=11, weight="bold"),
-                hovertemplate="%{y} · " + g_ + ": %{x:.1f}%<extra></extra>"
-            ))
-        fig.update_layout(barmode="stack")
-        fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
-        fig.update_yaxes(showgrid=False)
-        show(style(fig, 300, t=42).update_layout(margin=dict(l=12, r=16, t=42, b=14), legend=dict(orientation="h", y=1.16, x=0, font=dict(size=10.5))), "i3")
+        fig.add_trace(go.Scatter(
+            x=g_i.length, y=y_i, mode="markers", name="길이별 중앙값",
+            marker=dict(color=BLUE, size=8),
+            customdata=[human(v).replace(" (1ms 미만)", "") for v in g_i.med],
+            hovertemplate="%{x}자 중앙값: %{customdata}<extra></extra>"
+        ))
+        fig.add_trace(go.Scatter(
+            x=g_i.length, y=y_fit, mode="lines", name=f"회귀 추세선 (R²={r2_i:.2f})",
+            line=dict(color="#1d1d1f", width=2.5, dash="dash"), hoverinfo="skip"
+        ))
+        fig.add_vline(x=Ln, line_color=GREEN, line_width=2, annotation_text=f"선택 {Ln}자", annotation_position="top right")
+        fig.add_hline(y=math.log10(YR), line_dash="dot", line_color=RED, annotation_text="안전 기준(1년)", annotation_position="bottom right")
+        fig.update_xaxes(title="비밀번호 길이(자)")
+        tick_axis(fig, min(y_i.min(), -2), max(y_i.max(), math.log10(YR) + 1))
+        show(style(fig, 310, t=34), "i3")
 
     with st.expander("데이터 출처 요약"):
         st.markdown(
             "1. **Password Metrics Dataset** (고유 피처 25,000건 추출): [Kaggle 바로가기](https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset)\n"
-            "2. **Password Strength and Vulnerability Dataset** (흔한 비밀번호 500건): [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)\n"
-            "3. **Have I Been Pwned (Pwned Passwords API)**: [공식 사이트 바로가기](https://haveibeenpwned.com/Passwords)"
+            "2. **Password Strength and Vulnerability Dataset** (흔한 비밀번호 500건): [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)"
         )
 
 def p_leak():
@@ -442,7 +451,7 @@ def p_leak():
         ("선택된 표본 수", len(f), 0, "개"),
         ("길이 중앙값", float(f.length.median()), 0, "자"),
         ("엔트로피 중앙값", float(f.entropy.median()), 1, "bit"),
-        ("뚫리는 시간 중앙값", human(f.crack_time_sec.median()), 0, ""),
+        ("뚫리는 시간 중앙값", human(f.crack_time_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("표본 내 1년 내 뚫림", (f.crack_time_sec <= YR).mean() * 100, 0, "%"),
         ("표본 내 1시간 내 뚫림", (f.crack_time_sec <= 3600).mean() * 100, 0, "%")
     ])
@@ -465,7 +474,7 @@ def p_leak():
         if g.empty:
             st.info("표본이 부족합니다.")
         else:
-            y = np.log10(g.med)
+            y = np.log10(g.med.clip(lower=1e-3))
             fig = go.Figure(go.Scatter(
                 x=g.length, y=y, mode="lines+markers", line=dict(color=BLUE, width=3, shape="spline"), marker=dict(size=7),
                 customdata=[[human(v), n] for v, n in zip(g.med, g.n)],
@@ -496,8 +505,8 @@ def p_leak():
         for tp, c_ in zip(type_order, type_cols):
             sub_t = f[f["조합유형"] == tp]
             if not sub_t.empty:
-                fig.add_trace(go.Box(y=sub_t["lc"], name=tp, marker_color=c_, boxpoints=False))
-        tick_axis(fig, f["lc"].min(), f["lc"].max(), "y")
+                fig.add_trace(go.Box(y=sub_t["lc"].clip(lower=-3), name=tp, marker_color=c_, boxpoints=False))
+        tick_axis(fig, max(f["lc"].min(), -3), f["lc"].max(), "y")
         fig.update_layout(showlegend=False)
         show(style(fig), "a3")
 
@@ -521,8 +530,8 @@ def p_common():
     kpis([
         ("표시 중 비밀번호", len(q), 0, "개"),
         ("가장 많은 종류", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"),
-        ("온라인 공격 · 중앙값", human(q.online_sec.median()), 0, ""),
-        ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()), 0, ""),
+        ("온라인 공격 · 중앙값", human(q.online_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
+        ("오프라인 공격 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("온라인 · 1일 안에 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"),
         ("오프라인 · 1초 안에 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")
     ])
@@ -553,13 +562,7 @@ def p_common():
     ins(f"표시 중 {len(q)}개 중 {(q.online_sec <= 86400).mean():.0%}는 로그인 창 공격에도 하루 안에 뚫리고, 유출 파일을 대입하는 오프라인 공격은 중앙값 {human(q.offline_crack_sec.median())}이면 충분합니다.")
     source("t2")
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def hibp_range(prefix):
-    r = requests.get(f"https://api.pwnedpasswords.com/range/{prefix}", headers={"Add-Padding": "true", "User-Agent": "streamlit-password-dashboard"}, timeout=6)
-    r.raise_for_status()
-    return r.text
-
-def diagnose(pw: str, use_hibp: bool):
+def diagnose(pw: str):
     feats = extract_features(pw)
     L = feats["length"]
     low = pw.lower()
@@ -579,28 +582,18 @@ def diagnose(pw: str, use_hibp: bool):
     pct = float((M["lc"] <= adj_lc).mean() * 100)
     score = float(np.clip((adj_lc + 2.0) / 14.0 * 100.0, 0, 100))
 
-    cnt = None
-    if use_hibp:
-        try:
-            sha = hashlib.sha1(pw.encode()).hexdigest().upper()
-            cnt = next((int(c) for h_, _, c in (x.partition(":") for x in hibp_range(sha[:5]).splitlines()) if h_ == sha[5:]), 0)
-        except Exception:
-            cnt = -1
-
     common = low in TOP
     if common:
         score = min(score, 5.0)
         est_sec = min(est_sec, 1.0)
-    if cnt and cnt > 0:
-        score = min(score, 10.0)
 
     st.session_state["diag"] = dict(
-        L=L, score=score, est_sec=est_sec, pct=pct, cnt=cnt, common=common,
+        L=L, score=score, est_sec=est_sec, pct=pct, common=common,
         seq=seq, rep=rep, yr=yr, up=feats["n_upper"] > 0, dg=feats["n_digit"] > 0, sp=(feats["n_special"] + feats["n_non"]) > 0
     )
 
 def p_check():
-    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않습니다. 25,000개 데이터로 학습한 ML 모델 예측과 HIBP 공개 API 유출 조회(앞 5자리 해시만 전송)를 결합해 진단합니다.")
+    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 서버에 저장되지 않습니다. 고유 데이터 25,000건으로 학습한 ML 예측 모델과 흔한 비밀번호 500개 DB를 결합해 진단합니다.")
 
     with st.container(key="chk_panel"):
         md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
@@ -610,16 +603,16 @@ def p_check():
                 fc = st.columns([3.8, 1.4], vertical_alignment="center")
                 pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (저장 안 됨)", label_visibility="collapsed")
                 if fc[1].form_submit_button("점검하기") and pw:
-                    diagnose(pw, True)
+                    diagnose(pw)
         for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 흔한형", "password123"), ("🧩 규칙형", "Summer2024!"), ("🎲 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
             if col.button(lab, key=f"d_ex{i}", use_container_width=True):
-                diagnose(v, True)
+                diagnose(v)
 
     d = st.session_state.get("diag")
     if d:
         s = d["score"]
         grade, col = ("위험", RED) if s < 30 else ("주의", ORANGE) if s < 55 else ("양호", BLUE) if s < 80 else ("안전", GREEN)
-        if (d["cnt"] and d["cnt"] > 0) or d["common"]:
+        if d["common"]:
             grade, col = "위험", RED
 
         c1, c2, c3 = st.columns([2.3, 3.2, 2.5])
@@ -647,36 +640,22 @@ def p_check():
             ]
             ch = "".join(f'<div class="chip {"ok" if v else "no"}">{"✓" if v else "✕"} {k}</div>' for k, v in chips)
 
-            if d["cnt"] is None:
-                hibp_val, hibp_sub, hibp_col = "미조회", "API 비활성화", "#6e6e73"
-            elif d["cnt"] == -1:
-                hibp_val, hibp_sub, hibp_col = "연결 지연", "HIBP 재시도 필요", ORANGE
-            elif d["cnt"] > 0:
-                hibp_val, hibp_sub, hibp_col = f"{d['cnt']:,}회 유출", "즉시 변경 권장", RED
-            else:
-                hibp_val, hibp_sub, hibp_col = "0건 (안전)", "HIBP DB 미유출", GREEN
-
             md(f"""<div class="res-card">
                 <div>
                     <div class="res-hdr">
-                        <span>🤖 AI 예측 및 유출 정밀 리포트</span>
-                        <a href="https://haveibeenpwned.com/Passwords" target="_blank" style="font-size:12px;color:#5b8def;text-decoration:none;font-weight:700">HIBP 공식 확인 ↗</a>
+                        <span>🤖 ML 예측 기반 정밀 진단 리포트</span>
+                        <span style="font-size:12px;color:#5b6472;font-weight:600">Random Forest 예측</span>
                     </div>
                     <div class="stat-grid">
                         <div class="stat-box">
                             <div class="stat-lbl">예상 뚫리는 시간</div>
                             <div class="stat-val">{human(d['est_sec'])}</div>
-                            <div class="stat-sub">RF 모델 예측치</div>
+                            <div class="stat-sub">구조·패턴 종합 산출</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-lbl">표본 내 보안 순위</div>
                             <div class="stat-val">상위 {max(0.1, 100 - d['pct']):.1f}%</div>
                             <div class="stat-sub">고유 25,000건 기준</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-lbl">실제 유출 이력</div>
-                            <div class="stat-val" style="color:{hibp_col}">{hibp_val}</div>
-                            <div class="stat-sub">{hibp_sub}</div>
                         </div>
                     </div>
                 </div>
@@ -688,8 +667,6 @@ def p_check():
 
         with c3:
             tips = []
-            if d["cnt"] and d["cnt"] > 0:
-                tips.append(("warn", "긴급", f"실제 유출 DB에서 <b>{d['cnt']:,}회</b> 발견된 비밀번호입니다. 동일 비밀번호를 쓰는 모든 사이트에서 즉시 변경하세요."))
             if d["common"]:
                 tips.append(("warn", "긴급", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 사전 대입 공격으로 1초 내에 뚫립니다."))
             if d["L"] < 12:
@@ -699,7 +676,7 @@ def p_check():
             if d["seq"] or d["rep"] or d["yr"]:
                 tips.append(("norm", "패턴 제거", "키보드 연속 배열(qwerty, 123), 반복 문자(aaa), 연도/생일(2024, 0315) 패턴을 제거하세요."))
             if not tips:
-                tips.append(("good", "최상 등급", "길이와 문자 다양성이 모두 우수하며 유출 이력도 없습니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
+                tips.append(("good", "최상 등급", "길이와 문자 다양성이 모두 우수하며 취약 패턴도 없습니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
 
             tip_html = "".join(f'<div class="tip-item {cls}"><span class="tip-tag">{tag}</span>{txt}</div>' for cls, tag, txt in tips)
             md(f"""<div class="res-card" style="justify-content:flex-start">
