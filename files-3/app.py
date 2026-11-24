@@ -119,6 +119,7 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 .tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .5s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:38px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:14px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b,.box,.box b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.st-key-hdr .ht small{color:#8d97b5!important}div.ig,div.ig *{color:#fff!important}
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:58px;border-radius:18px;border:0;box-shadow:0 8px 20px rgba(60,90,140,.2);transition:transform .25s,box-shadow .25s}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(60,90,140,.28)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:16px;font-weight:700}.st-key-d_ex0,.st-key-d_ex1,.st-key-d_ex2{animation:up .6s both}[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:46px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700}[data-testid="stForm"] input{border-radius:14px}
 @media(max-height:960px){.block-container{zoom:.9}}@media(max-height:880px){.block-container{zoom:.82}}@media(max-height:800px){.block-container{zoom:.74}}@media(max-height:720px){.block-container{zoom:.66}}@media(max-height:640px){.block-container{zoom:.58}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}</style>""", False)
 if not st.session_state.get("splash"):
@@ -128,18 +129,12 @@ NAMES = ["👋 시작하기", "📊 뚫리는 시간", "⚠️ 흔한 비밀번�
 if "nav" not in st.session_state: st.session_state["nav"] = NAMES[0]
 def _keep():
     if st.session_state.get("nav") is None: st.session_state["nav"] = st.session_state.get("last_nav", NAMES[0])
-@st.fragment(run_every=12)
-def tour():
-    if st.session_state.get("tour_on") and time.time() - st.session_state.get("tour_t", 0) > 11:
-        st.session_state["nav"] = NAMES[(NAMES.index(st.session_state["nav"]) + 1) % len(NAMES)]; st.session_state["tour_t"] = time.time(); st.rerun()
 with st.container(key="hdr"):
-    hc = st.columns([2.3, 7, 1.3, 1.2], vertical_alignment="center")
-    hc[0].markdown('<div class="ht">🔐 비밀번호 보안 분석<small>얼마나 빨리 뚫리고, 어떻게 지킬까</small></div>', unsafe_allow_html=True)
+    hc = st.columns([2.3, 8.3, 1.2], vertical_alignment="center")
+    hc[0].markdown('<div class="ht">🔐 비밀번호 보안 분석</div>', unsafe_allow_html=True)
     if hasattr(st, "segmented_control"): hc[1].segmented_control("메뉴", NAMES, key="nav", label_visibility="collapsed", on_change=_keep)
     else: hc[1].radio("메뉴", NAMES, horizontal=True, label_visibility="collapsed", key="nav")
-    hc[2].toggle("자동 순회", key="tour_on", on_change=lambda: st.session_state.update(tour_t=time.time()))
-    hc[3].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False))
-tour()
+    hc[2].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False))
 cur = st.session_state.get("nav") or NAMES[0]; st.session_state["last_nav"] = cur; page = NAMES.index(cur)
 
 def _setall(key, vals): st.session_state[key] = list(vals)
@@ -263,8 +258,10 @@ def diagnose(pw, use_hibp):
 
 def p_check():
     head("질문 4. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않습니다. 유출 확인에는 암호화한 값의 앞 5글자만 보냅니다.")
-    ex = st.columns(3); u = True
-    for i, (col, (lab, v)) in enumerate(zip(ex[:3], [("예시 · 흔한 비밀번호", "password123"), ("예시 · 규칙형", "Summer2024!"), ("예시 · 긴 무작위", "vK9#mQ2$zL7@pW4xR8")])):
+    u = True
+    md('<div class="sec" style="min-height:0"><div class="t">예시로 먼저 해 보세요</div><div class="k">누르면 바로 점검 결과가 나옵니다. 아래 입력칸에 직접 넣어 볼 수도 있어요.</div></div>')
+    ex = st.columns([1, 1, 1, 1.3])
+    for i, (col, (lab, v)) in enumerate(zip(ex[:3], [("🔓 흔한 비밀번호", "password123"), ("🧩 규칙형 비밀번호", "Summer2024!"), ("🎲 긴 무작위 비밀번호", "vK9#mQ2$zL7@pW4xR8")])):
         if col.button(lab, key=f"d_ex{i}"): diagnose(v, u)
     with st.form("f", clear_on_submit=True, border=False):
         fc = st.columns([6, 1]); pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요(저장되지 않습니다)", label_visibility="collapsed")
