@@ -23,14 +23,22 @@ CAND = [1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e1
 
 SRC = {
     "t1": (
-        "Password Metrics Dataset",
+        "Password Metrics Dataset (Kaggle)",
         "원본 100,000행 중 중복 비밀번호를 제거한 고유 25,000개(개인정보 보호를 위해 비밀번호 원문은 제거하고 길이·문자 구성·패턴 등 20개 수치 피처만 저장). 강도 등급은 등급별 약 5,000개씩 균등 추출된 표본이므로 실제 이용자 비율과 다름. 뚫리는 시간은 10^-7~10^104초로 범위가 넓어 로그 눈금·중앙값으로 집계.",
-        "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"
+        [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset")]
     ),
     "t2": (
-        "Password Strength and Vulnerability Dataset",
-        "흔한 비밀번호 500개(인기 순위 기준). 원출처는 Information is Beautiful의 공개 자료입니다. value·time_unit은 '온라인 로그인 추측 공격으로 뚫는 시간', offline_crack_sec는 '유출 해시 파일 오프라인 대입 공격 시간(초)'이며 동일 초 단위로 환산(1개월=30.4일, 1년=365.25일)해 비교했습니다. (데이터셋 간 가정된 초당 시도 횟수 기준이 다를 수 있음)",
-        "https://www.kaggle.com/datasets/utkarshx27/passwords"
+        "Password Strength and Vulnerability Dataset (Kaggle / Information is Beautiful)",
+        "흔한 비밀번호 500개(인기 순위 기준). 원출처는 Information is Beautiful의 공개 자료입니다. value·time_unit은 '온라인 로그인 추측 공격으로 뚫는 시간', offline_crack_sec는 '유출 해시 파일 오프라인 대입 공격 시간(초)'이며 동일 초 단위로 환산(1개월=30.4일, 1년=365.25일)해 비교했습니다.",
+        [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
+    ),
+    "t3": (
+        "Have I Been Pwned (Pwned Passwords API) & 학습 모델 기준",
+        "실제 유출 여부는 보안 연구자 Troy Hunt가 운영하는 Have I Been Pwned의 공개 API(k-Anonymity 방식, API 키 불필요 무료 개방)를 통해 SHA-1 해시 앞 5자리만 전송하여 실시간 대조합니다. 예상 뚫리는 시간은 Kaggle Password Metrics Dataset(25,000건)으로 학습한 Random Forest 회귀 모델 예측치에 패턴 페널티를 반영해 산출했습니다.",
+        [
+            ("Have I Been Pwned 공식 사이트 바로가기", "https://haveibeenpwned.com/Passwords"),
+            ("학습 데이터 출처 보기 (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset")
+        ]
     )
 }
 
@@ -63,7 +71,6 @@ def extract_features(pw: str) -> dict:
     else:
         shannon = 0.0
 
-    # 키보드 행/알파벳/숫자 연속 길이 계산
     longest_seq = 1
     for i in range(L):
         for j in range(i + 2, L + 1):
@@ -71,7 +78,6 @@ def extract_features(pw: str) -> dict:
             if any(sub in r or sub[::-1] in r for r in SEQ_ROWS):
                 longest_seq = max(longest_seq, j - i)
 
-    # 동일 문자 최대 반복 길이
     longest_rep = 1
     cur_rep = 1
     for i in range(1, L):
@@ -123,7 +129,7 @@ def style(fig, h=310):
     fig.update_layout(
         height=h, margin=dict(l=12, r=16, t=26, b=14), paper_bgcolor="#fff", plot_bgcolor="#fff",
         font=dict(family=FONT, size=12, color="#1d1d1f"),
-        legend=dict(orientation="h", y=1.1, x=0, font=dict(size=11)),
+        legend=dict(orientation="h", y=1.12, x=0, font=dict(size=11)),
         hoverlabel=dict(font_family=FONT, bgcolor="white")
     )
     fig.update_xaxes(gridcolor="#ececf0", zeroline=False, showline=False, automargin=True)
@@ -135,22 +141,35 @@ def show(fig, key):
     st.plotly_chart(fig, config={"displayModeBar": False}, key=key, **(dict(width="stretch") if _PW else dict(use_container_width=True)))
 
 _bd = [0]
-def head(title, take):
+def head(title, take, table_fn=None):
     b = ""
-    if title.startswith("질문"): _bd[0] = 0
-    else: _bd[0] += 1; b = f'<span class="bd">분석 {_bd[0]}</span>'
-    md(f'<div class="sec"><div class="t">{b}{title}</div><div class="k">{take}</div></div>')
+    if title.startswith("질문"):
+        _bd[0] = 0
+    else:
+        _bd[0] += 1
+        b = f'<span class="bd">분석 {_bd[0]}</span>'
+
+    if table_fn is None:
+        md(f'<div class="sec"><div class="t">{b}{title}</div><div class="k">{take}</div></div>')
+    else:
+        c1, c2 = st.columns([7.8, 2.2], vertical_alignment="top")
+        with c1:
+            md(f'<div class="sec" style="min-height:auto"><div class="t">{b}{title}</div></div>', pad=False)
+        with c2:
+            with st.popover("📋 표", use_container_width=True):
+                table_fn()
+        md(f'<div class="sec" style="min-height:46px;padding-top:0"><div class="k" style="margin-top:0">{take}</div></div>')
 
 def source(key):
-    n, t, u = SRC[key]
+    n, t, links = SRC[key]
     with st.expander("데이터 출처 · 집계 기준 · 한계"):
-        st.markdown(f"**{n}**\n\n{t}" + (f"\n\n🔗 [원본 데이터 보기(Kaggle)]({u})" if u else ""))
+        link_md = " &nbsp;|&nbsp; ".join(f"🔗 [{label}]({url})" for label, url in links)
+        st.markdown(f"**{n}**\n\n{t}\n\n{link_md}")
 
 def ins(text, color=BLUE, label="핵심 결론"):
     md(f'<div class="ins" style="border-left-color:{color}"><b>{label}</b> {text}</div>')
 
 def tile_grid(qq):
-    # 절대 시간 기준 색상 매핑 (0초=빨강, 1일(4.94)=노랑, 1년+(7.50)=초록)
     lo, hi = 0.0, 7.5
     A, B, Cc = (255, 154, 143), (255, 228, 154), (143, 220, 176)
     def col(v):
@@ -219,7 +238,6 @@ def load():
 
 @st.cache_resource
 def train_model(m: pd.DataFrame):
-    # 정렬 편향 방지를 위한 셔플 후 학습
     shuffled = m.sample(frac=1.0, random_state=42)
     X = shuffled[FEAT_COLS]
     y = shuffled["lc"]
@@ -239,13 +257,16 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes wipe{from{opacity:0;clip-path:inset(0 100% 0 0 round 22px)}to{opacity:1;clip-path:inset(0 0 0 0 round 22px)}}
 .st-key-hdr{background:linear-gradient(100deg,#171f3d,#0f1730);border-radius:22px;padding:14px 22px;border:1px solid #25305a;box-shadow:0 6px 24px rgba(15,23,48,.25)}
-.st-key-hdr *{color:#e6e9f2}.ht{font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
-.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:nowrap;gap:8px}
+.st-key-hdr [data-testid="stHorizontalBlock"]{align-items:center!important}
+.st-key-hdr [data-testid="stMarkdownContainer"] p{margin:0!important;line-height:1!important}
+.st-key-hdr *{color:#e6e9f2}
+.ht{font-size:20px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;display:flex;align-items:center;height:50px}
+.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:nowrap;gap:8px;align-items:center}
 .st-key-hdr [data-testid="stButtonGroup"] button{min-height:50px;padding:10px 22px;font-size:16px;font-weight:700;border-radius:15px;background:#1a2547;border:1px solid #2a3868;white-space:nowrap;transition:all .25s}
 .st-key-hdr [data-testid="stButtonGroup"] button:hover{transform:translateY(-2px);border-color:#5b8def}
 .st-key-hdr [data-testid="stButtonGroup"] button[aria-checked="true"],.st-key-hdr [data-testid="stButtonGroup"] button[aria-pressed="true"],.st-key-hdr button[data-testid="stBaseButton-segmented_controlActive"]{background:#5b8def!important;border-color:#8fb4ff;box-shadow:0 0 20px rgba(91,141,239,.6)}
 .st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap}.st-key-hdr [role="radiogroup"] label{padding:10px 18px;border-radius:14px;background:#1a2547;border:1px solid #2a3868}
-.st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:12px}
+.st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:14px;min-height:50px}
 .sec{padding:4px 2px 4px;min-height:76px}.sec .t{font-size:16.5px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.8px;color:#5b6472;margin-top:4px;line-height:1.5}
 .bd{background:#5b8def;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px}
 div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe .9s cubic-bezier(.2,.8,.2,1) both;transition:box-shadow .3s}
@@ -254,13 +275,18 @@ div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16
 .box{background:#fff;border-radius:22px;padding:18px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;line-height:1.7;font-size:14px}.box b{font-size:17px}
 .chip{display:inline-block;border-radius:99px;padding:5px 12px;margin:3px 4px 3px 0;font-size:13.5px;font-weight:600}.ok{background:#e3f8e9;color:#1b7a36}.no{background:#ffe9e7;color:#c4261b}
 span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="slider"]{background:#5b8def!important}[data-testid="stExpander"]{border-radius:14px;background:#fff}
+[data-testid="stPopover"] button{border-radius:99px!important;padding:2px 10px!important;min-height:30px!important;font-size:12px!important;font-weight:700!important;background:#fff!important;border:1px solid #d5dbe5!important;box-shadow:0 1px 4px rgba(0,0,0,.04)!important}
+[data-testid="stPopover"] button:hover{border-color:#5b8def!important;color:#5b8def!important}
 .spl{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:so 2.6s ease forwards}
 .spl div{color:#fff;font-size:clamp(30px,6vw,64px);font-weight:800;letter-spacing:-.03em;animation:si 1.4s cubic-bezier(.2,.8,.2,1) both}
 @keyframes si{from{opacity:0;transform:scale(.92);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}@keyframes so{0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
 .tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .4s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:38px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:14px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96}
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b,.box,.box b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
-.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:58px;border-radius:18px;border:0;box-shadow:0 8px 20px rgba(60,90,140,.2);transition:transform .25s,box-shadow .25s}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(60,90,140,.28)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:16px;font-weight:700}.st-key-d_ex0,.st-key-d_ex1,.st-key-d_ex2{animation:up .6s both}[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:46px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700}[data-testid="stForm"] input{border-radius:14px}
+.st-key-chk_panel{background:#fff;border-radius:22px;padding:16px 20px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
+.st-key-chk_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button{width:100%;min-height:46px;border-radius:14px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}.st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}.st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}.st-key-d_ex2 button{background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}.st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *{color:#fff!important;font-size:13.5px;font-weight:700}
+[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:14px;min-height:46px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700}[data-testid="stForm"] input{border-radius:14px;min-height:46px}
 @media(max-height:960px){.block-container{zoom:.9}}@media(max-height:880px){.block-container{zoom:.82}}@media(max-height:800px){.block-container{zoom:.74}}@media(max-height:720px){.block-container{zoom:.66}}@media(max-height:640px){.block-container{zoom:.58}}</style>""", False)
 
 if not st.session_state.get("splash"):
@@ -279,7 +305,7 @@ with st.container(key="hdr"):
         hc[1].segmented_control("메뉴", NAMES, key="nav", label_visibility="collapsed", on_change=_keep)
     else:
         hc[1].radio("메뉴", NAMES, horizontal=True, label_visibility="collapsed", key="nav")
-    hc[2].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False))
+    hc[2].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False), use_container_width=True)
 
 cur = st.session_state.get("nav") or NAMES[0]
 st.session_state["last_nav"] = cur
@@ -353,19 +379,31 @@ def p_intro():
         st.markdown(f"길이 **{Ln}자** 안팎의 표본은 중앙값 **{human(m)}**이 걸려야 뚫립니다. (표본 {len(sub):,}개)")
 
     with x3:
-        head("길이 → 강도 등급 흐름(산키 차트)", "선이 굵을수록 비밀번호가 많습니다. 길이 구간별로 어떤 강도 등급으로 분류되는지 확인해 보세요.")
+        head("길이별 강도 등급 비율(100% 누적 막대)", "막대 한 줄이 각 길이 구간의 전체(100%)입니다. 길어질수록 빨강(약함)이 줄고 초록(매우 강함)이 압도적으로 커집니다.")
         bins = ["≤7자", "8~11자", "12~15자", "16~20자", "21자+"]
-        sk = M.assign(구간=pd.cut(M.length, [0, 7, 11, 15, 20, 70], labels=bins).astype(str), 등급=M.등급.astype(str)).groupby(["구간", "등급"]).size().reset_index(name="n")
-        fig = go.Figure(go.Sankey(
-            node=dict(label=bins + ORDER, color=["#9db7ee"] * 5 + [CCOL[o] for o in ORDER], pad=14, thickness=14),
-            link=dict(source=[bins.index(a) for a in sk.구간], target=[5 + ORDER.index(b) for b in sk.등급], value=sk.n, color="rgba(91,141,239,.22)")
-        ))
-        show(style(fig, 300), "i3")
+        ct = pd.crosstab(pd.cut(M.length, [0, 7, 11, 15, 20, 70], labels=bins), M.등급, normalize="index") * 100
+        ct = ct.reindex(index=bins[::-1], columns=ORDER, fill_value=0)
+        fig = go.Figure()
+        for g_ in ORDER:
+            vals = ct[g_].values
+            fig.add_trace(go.Bar(
+                y=ct.index, x=vals, name=g_, orientation="h",
+                marker_color=CCOL[g_],
+                text=[f"{v:.0f}%" if v >= 12 else "" for v in vals],
+                textposition="inside", insidetextanchor="middle",
+                textfont=dict(color="#1d1d1f" if g_ == "보통" else "#fff", size=11, weight="bold"),
+                hovertemplate="%{y} · " + g_ + ": %{x:.1f}%<extra></extra>"
+            ))
+        fig.update_layout(barmode="stack")
+        fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
+        fig.update_yaxes(showgrid=False)
+        show(style(fig, 300).update_layout(margin=dict(l=12, r=16, t=42, b=14), legend=dict(orientation="h", y=1.16, x=0, font=dict(size=10.5))), "i3")
 
     with st.expander("데이터 출처 요약"):
         st.markdown(
             "1. **Password Metrics Dataset** (고유 피처 25,000건 추출): [Kaggle 바로가기](https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset)\n"
-            "2. **Password Strength and Vulnerability Dataset** (흔한 비밀번호 500건): [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)"
+            "2. **Password Strength and Vulnerability Dataset** (흔한 비밀번호 500건): [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)\n"
+            "3. **Have I Been Pwned (Pwned Passwords API)**: [공식 사이트 바로가기](https://haveibeenpwned.com/Passwords)"
         )
 
 def p_leak():
@@ -402,7 +440,8 @@ def p_leak():
             f"길이가 1자 늘 때마다 뚫리는 시간이 평균 약 {10**slope:.1f}배 늘어납니다(선형 설명력 R²={r2:.2f}). 표본 20개 미만 길이는 제외했습니다."
             if np.isfinite(slope) else "길이 구간을 넓히면 추세가 보입니다."
         )
-        head("길이가 길수록 얼마나 오래 걸릴까?(선 그래프)", desc)
+        tbl_a1 = (lambda: st.dataframe(g.assign(중앙값=g.med.map(human))[["length", "n", "중앙값"]].rename(columns={"length": "길이", "n": "표본"}), hide_index=True)) if not g.empty else None
+        head("길이가 길수록 얼마나 오래 걸릴까?(선 그래프)", desc, table_fn=tbl_a1)
         if g.empty:
             st.info("표본이 부족합니다.")
         else:
@@ -416,8 +455,6 @@ def p_leak():
             fig.update_xaxes(title="비밀번호 길이(자)")
             tick_axis(fig, min(y.min(), math.log10(YR)), y.max())
             show(style(fig), "a1")
-            with st.popover("📋 표 보기"):
-                st.dataframe(g.assign(중앙값=g.med.map(human))[["length", "n", "중앙값"]].rename(columns={"length": "길이", "n": "표본"}), hide_index=True)
 
     with x2:
         stp = [("시작", 0), ("1분 버팀", 60), ("1시간 버팀", 3600), ("1일 버팀", 86400), ("1년 버팀", YR), ("100년 버팀", YR * 100)]
@@ -472,10 +509,9 @@ def p_common():
 
     x1, x2, x3 = st.columns([4, 3, 3])
     with x1:
-        head(f"가장 흔한 비밀번호 {len(q)}개, 얼마나 빨리 뚫릴까?(타일 지도)", "절대 시간 기준 색상입니다(빨강=즉시~수분, 노랑=수일~수개월, 초록=1년 이상). 칸이 많으면 스크롤해 보세요.")
+        tbl_b1 = lambda: st.dataframe(q.assign(온라인=q.online_sec.map(human), 오프라인=q.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
+        head(f"가장 흔한 비밀번호 {len(q)}개, 얼마나 빨리 뚫릴까?(타일 지도)", "절대 시간 기준 색상입니다(빨강=즉시~수분, 노랑=수일~수개월, 초록=1년 이상). 칸이 많으면 스크롤해 보세요.", table_fn=tbl_b1)
         tile_grid(q)
-        with st.popover("📋 표 보기"):
-            st.dataframe(q.assign(온라인=q.online_sec.map(human), 오프라인=q.offline_crack_sec.map(human))[["rank", "password", "category", "온라인", "오프라인"]].rename(columns={"rank": "순위", "password": "비밀번호", "category": "종류"}), hide_index=True)
 
     with x2:
         head("어떤 종류가 가장 많을까?(도넛 차트)", f"가장 많은 종류는 '{topc.index[0]}'({topc.iloc[0]}개)입니다. 조각이 클수록 비중이 높습니다.")
@@ -508,11 +544,9 @@ def diagnose(pw: str, use_hibp: bool):
     L = feats["length"]
     low = pw.lower()
 
-    # ML 모델 기반 로그 크랙 시간 예측
     X_in = pd.DataFrame([feats])[FEAT_COLS]
     pred_lc = float(ML_MODEL.predict(X_in)[0])
 
-    # 패턴 및 비ASCII 예외 보정 (학습 데이터에 n_non=0인 점 보완)
     if feats["n_non"] > 0:
         pred_lc += min(feats["n_non"], 4) * 0.4
     seq = feats["longest_seq"] >= 3
@@ -522,10 +556,7 @@ def diagnose(pw: str, use_hibp: bool):
     adj_lc = pred_lc - penalty_log
     est_sec = 10 ** adj_lc
 
-    # 25,000개 표본 내 백분위 계산
     pct = float((M["lc"] <= adj_lc).mean() * 100)
-
-    # 종합 안전 점수 (로그 스케일 -2 ~ +12 구간을 0~100점으로 매핑)
     score = float(np.clip((adj_lc + 2.0) / 14.0 * 100.0, 0, 100))
 
     cnt = None
@@ -549,19 +580,20 @@ def diagnose(pw: str, use_hibp: bool):
     )
 
 def p_check():
-    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않습니다. 25,000개 데이터로 학습한 ML 모델 예측과 HIBP 유출 조회(앞 5자리 해시만 전송)를 결합해 진단합니다.")
-    md('<div class="sec" style="min-height:0"><div class="t">예시로 먼저 해 보세요</div><div class="k">버튼을 누르면 즉시 진단됩니다. 아래 입력칸에 직접 입력해 볼 수도 있습니다.</div></div>')
+    head("질문 3. 내 비밀번호는 안전할까?", "입력한 비밀번호는 저장하지 않습니다. 25,000개 데이터로 학습한 ML 모델 예측과 HIBP 공개 API 유출 조회(앞 5자리 해시만 전송)를 결합해 진단합니다.")
 
-    ex = st.columns([1, 1, 1, 1.3])
-    for i, (col, (lab, v)) in enumerate(zip(ex[:3], [("🔓 흔한 비밀번호", "password123"), ("🧩 규칙형 비밀번호", "Summer2024!"), ("🎲 긴 무작위 비밀번호", "vK9#mQ2$zL7@pW4xR8")])):
-        if col.button(lab, key=f"d_ex{i}"):
-            diagnose(v, True)
-
-    with st.form("f", clear_on_submit=True, border=False):
-        fc = st.columns([6, 1])
-        pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요(저장되지 않습니다)", label_visibility="collapsed")
-        if fc[1].form_submit_button("점검하기") and pw:
-            diagnose(pw, True)
+    with st.container(key="chk_panel"):
+        md('<div style="font-size:13.5px;font-weight:700;color:#1d1d1f;margin-bottom:8px">직접 입력하거나, 오른쪽 예시 유형을 눌러 바로 테스트해 보세요</div>', pad=False)
+        top_row = st.columns([5.2, 1.6, 1.6, 1.6], vertical_alignment="center")
+        with top_row[0]:
+            with st.form("f", clear_on_submit=True, border=False):
+                fc = st.columns([4.2, 1.2], vertical_alignment="center")
+                pw = fc[0].text_input("비밀번호 입력", type="password", placeholder="비밀번호를 입력하세요 (서버에 저장되지 않습니다)", label_visibility="collapsed")
+                if fc[1].form_submit_button("점검하기") and pw:
+                    diagnose(pw, True)
+        for i, (col, (lab, v)) in enumerate(zip(top_row[1:], [("🔓 예시: 흔한형", "password123"), ("🧩 예시: 규칙형", "Summer2024!"), ("🎲 예시: 무작위형", "vK9#mQ2$zL7@pW4xR8")])):
+            if col.button(lab, key=f"d_ex{i}", use_container_width=True):
+                diagnose(v, True)
 
     d = st.session_state.get("diag")
     if d:
@@ -597,7 +629,12 @@ def p_check():
             br = {
                 None: "유출 확인을 사용하지 않았습니다.",
                 -1: "유출 확인 서버(HIBP)에 연결하지 못했습니다. 잠시 후 다시 시도하세요."
-            }.get(d["cnt"], f"유출 기록 <b>{d['cnt']:,}회</b> 발견! 이미 공개된 비밀번호이므로 즉시 변경하세요." if d["cnt"] and d["cnt"] > 0 else "유출 기록 <b>0건</b> (Have I Been Pwned 기준 미유출)")
+            }.get(
+                d["cnt"],
+                f"유출 기록 <b>{d['cnt']:,}회</b> 발견! 이미 공개된 비밀번호이므로 즉시 변경하세요. (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>HIBP 확인 ↗</a>)"
+                if d["cnt"] and d["cnt"] > 0
+                else "유출 기록 <b>0건</b> (<a href='https://haveibeenpwned.com/Passwords' target='_blank'>Have I Been Pwned ↗</a> 공개 해시 DB 기준 미유출)"
+            )
 
             md(f"""<div class="box">
                 <b>🤖 ML 모델 예측 및 유출 점검 결과</b><br><br>
@@ -616,6 +653,8 @@ def p_check():
             if not tips: tips.append("길이와 문자 다양성이 모두 우수합니다. 중요한 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요.")
             tip_html = "".join(f"<li>{t}</li>" for t in tips)
             md(f"""<div class="box"><b>💡 맞춤 보안 개선 가이드</b><ul style="margin:10px 0 0 18px;padding:0">{tip_html}</ul></div>""")
+
+    source("t3")
 
 if page == 0: p_intro()
 elif page == 1: p_leak()
