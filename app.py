@@ -38,9 +38,10 @@ SRC = {
         [("원본 데이터 보기 (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")]
     ),
     "t3": (
-        "자체 학습 예측 모델 & HIBP 실시간 유출 검증 (k-익명성)",
+        "자체 학습 예측 모델 & HIBP 실시간 유출 횟수 조회 (k-익명성)",
         "Kaggle 고유 25,000건의 20개 구조적 피처로 학습한 Random Forest 회귀 모델, 상위 500개 흔한 비밀번호 사전, 그리고 HIBP(Have I Been Pwned) Pwned Passwords API를 결합해 진단합니다. "
-        "HIBP 조회 시 비밀번호 원문은 절대 외부로 전송되지 않으며, SHA-1 해시의 앞 5자리만 전송하는 k-익명성(k-Anonymity) 방식으로 실제 유출 횟수를 안전하게 확인합니다.",
+        "HIBP 조회 시 비밀번호 원문은 절대 외부로 전송되지 않으며, SHA-1 해시의 앞 5자리만 전송하는 k-익명성(k-Anonymity) 방식으로 실제 유출 횟수를 안전하게 확인합니다. "
+        "유출 횟수는 HIBP가 알려 주는 값 그대로 표시하며, 이 값으로 '뚫리는 시간'을 계산하지 않습니다. 조회에 실패하면 '확인 불가'로 표시하고 안전으로 간주하지 않습니다.",
         [
             ("학습 데이터: Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
             ("흔한 목록: Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords"),
@@ -56,79 +57,79 @@ FEAT_COLS = [
     "has_year", "has_date", "has_leet", "digit_only", "alpha_only"
 ]
 
+# 키보드 행 단위로 분리(행 사이의 비인접 문자 오탐 방지). 학습 데이터(features_unique.csv)를 만들 때와 같은 정의를 사용합니다.
 SEQ_ROWS = ["abcdefghijklmnopqrstuvwxyz", "0123456789", "qwertyuiop", "asdfghjkl", "zxcvbnm"]
+RE_MMDD = re.compile(r"(?<!\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)")
+RE_YYMMDD = re.compile(r"(?<!\d)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)")
+RE_LEET = re.compile(r"(?<=[a-z])[@$013457]+(?=[a-z])")
 
-def check_hibp(pw: str):
-    """HIBP Pwned Passwords API (k-Anonymity): 유출 횟수 반환 (미유출=0, 네트워크 오류=None)"""
-    sha1 = hashlib.sha1(pw.encode("utf-8")).hexdigest().upper()
-    prefix, suffix = sha1[:5], sha1[5:]
-    url = f"https://api.pwnedpasswords.com/range/{prefix}"
+# Streamlit 버전에 따라 use_container_width / width="stretch" 중 지원되는 쪽을 자동 선택
+_BTN_W = dict(width="stretch") if "width" in inspect.signature(st.button).parameters else dict(use_container_width=True)
+_POP_W = dict(width="stretch") if "width" in inspect.signature(st.popover).parameters else dict(use_container_width=True)
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _hibp_range(prefix: str) -> str:
+    """해시 앞 5자리 → HIBP 응답 본문. 실패하면 예외를 그대로 던져 실패 결과가 캐시에 남지 않게 함."""
     req = urllib.request.Request(
-        url,
+        f"https://api.pwnedpasswords.com/range/{prefix}",
         headers={"User-Agent": "PasswordSecurityDashboard", "Add-Padding": "true"}
     )
+    with urllib.request.urlopen(req, timeout=4) as res:
+        return res.read().decode("utf-8")
+
+def check_hibp(pw: str):
+    """HIBP Pwned Passwords API (k-Anonymity): 유출 횟수 반환 (미유출=0, 조회 실패=None)"""
+    sha1 = hashlib.sha1(pw.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = sha1[:5], sha1[5:]
     try:
-        with urllib.request.urlopen(req, timeout=3) as res:
-            for line in res.read().decode("utf-8").splitlines():
-                if ":" in line:
-                    h, cnt = line.split(":", 1)
-                    if h == suffix:
-                        return int(cnt)
-        return 0
+        body = _hibp_range(prefix)
     except Exception:
         return None
+    for line in body.splitlines():
+        h, _, cnt = line.partition(":")
+        if h.strip() == suffix:
+            try:
+                return int(cnt)
+            except ValueError:
+                return None
+    return 0
+
+def _longest_seq(low: str) -> int:
+    best = run = 1
+    for a, b in zip(low, low[1:]):
+        if any(a in r and b in r and abs(r.index(b) - r.index(a)) == 1 for r in SEQ_ROWS):
+            run += 1
+            best = max(best, run)
+        else:
+            run = 1
+    return best
 
 def extract_features(pw: str) -> dict:
-    L = len(pw)
+    """학습 데이터를 만들 때 쓴 추출 함수와 같은 정의(학습·진단 불일치 방지)"""
+    L = max(len(pw), 1)
     low = pw.lower()
-    n_lower = sum(1 for c in pw if "a" <= c <= "z")
-    n_upper = sum(1 for c in pw if "A" <= c <= "Z")
-    n_digit = sum(1 for c in pw if "0" <= c <= "9")
-    n_non = sum(1 for c in pw if ord(c) > 127)
-    n_special = max(0, L - n_lower - n_upper - n_digit - n_non)
-    denom = max(L, 1)
-
-    n_classes = int(n_lower > 0) + int(n_upper > 0) + int(n_digit > 0) + int((n_special + n_non) > 0)
-    unique_ratio = len(set(pw)) / denom
-
-    if L > 0:
-        counts = np.array([pw.count(c) for c in set(pw)], dtype=float)
-        probs = counts / L
-        shannon = float(-np.sum(probs * np.log2(probs)))
-    else:
-        shannon = 0.0
-
-    longest_seq = 1
-    for i in range(L):
-        for j in range(i + 2, L + 1):
-            sub = low[i:j]
-            if any(sub in r or sub[::-1] in r for r in SEQ_ROWS):
-                longest_seq = max(longest_seq, j - i)
-
-    longest_rep = 1
-    cur_rep = 1
-    for i in range(1, L):
-        if pw[i] == pw[i - 1]:
-            cur_rep += 1
-            longest_rep = max(longest_rep, cur_rep)
-        else:
-            cur_rep = 1
-
-    has_year = int(bool(re.search(r"(19|20)\d\d", pw)))
-    has_date = int(bool(re.search(r"(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])", pw)))
-    has_leet = int(bool(re.search(r"[a-zA-Z]", pw) and re.search(r"[@$!013457]", pw)))
-    digit_only = int(L > 0 and n_digit == L)
-    alpha_only = int(L > 0 and (n_lower + n_upper) == L)
-
+    n_lower = sum(c.islower() and c.isascii() for c in pw)
+    n_upper = sum(c.isupper() and c.isascii() for c in pw)
+    n_digit = sum(c.isdigit() and c.isascii() for c in pw)
+    n_non = sum(not c.isascii() for c in pw)
+    n_special = len(pw) - n_lower - n_upper - n_digit - n_non
+    cnt = {}
+    for c in pw:
+        cnt[c] = cnt.get(c, 0) + 1
     return {
-        "length": L, "n_lower": n_lower, "n_upper": n_upper, "n_digit": n_digit,
+        "length": len(pw), "n_lower": n_lower, "n_upper": n_upper, "n_digit": n_digit,
         "n_special": n_special, "n_non": n_non,
-        "r_lower": n_lower / denom, "r_upper": n_upper / denom,
-        "r_digit": n_digit / denom, "r_special": n_special / denom,
-        "n_classes": n_classes, "unique_ratio": unique_ratio, "shannon": shannon,
-        "longest_seq": longest_seq, "longest_rep": longest_rep,
-        "has_year": has_year, "has_date": has_date, "has_leet": has_leet,
-        "digit_only": digit_only, "alpha_only": alpha_only
+        "r_lower": n_lower / L, "r_upper": n_upper / L, "r_digit": n_digit / L, "r_special": n_special / L,
+        "n_classes": int(n_lower > 0) + int(n_upper > 0) + int(n_digit > 0) + int(n_special > 0) + int(n_non > 0),
+        "unique_ratio": len(cnt) / L,
+        "shannon": -sum(v / L * math.log2(v / L) for v in cnt.values()),
+        "longest_seq": _longest_seq(low),
+        "longest_rep": max((len(m.group(0)) for m in re.finditer(r"(.)\1*", pw)), default=1),
+        "has_year": int(bool(re.search(r"(19|20)\d\d", pw))),
+        "has_date": int(bool(RE_MMDD.search(pw) or RE_YYMMDD.search(pw))),
+        "has_leet": int(bool(RE_LEET.search(low))),
+        "digit_only": int(pw.isdigit()),
+        "alpha_only": int(pw.isalpha())
     }
 
 def md(s, pad=True):
@@ -183,7 +184,7 @@ def head(title, take, table_fn=None):
         with c1:
             md(f'<div class="sec" style="min-height:auto"><div class="t">{b}{title}</div></div>', pad=False)
         with c2:
-            with st.popover("📋 표", use_container_width=True):
+            with st.popover("📋 표", **_POP_W):
                 table_fn()
         md(f'<div class="sec" style="min-height:46px;padding-top:0"><div class="k" style="margin-top:0">{take}</div></div>')
 
@@ -264,8 +265,8 @@ def load():
     return m, p
 
 @st.cache_resource
-def train_model(m: pd.DataFrame):
-    shuffled = m.sample(frac=1.0, random_state=42)
+def train_model(_m: pd.DataFrame):
+    shuffled = _m.sample(frac=1.0, random_state=42)
     X = shuffled[FEAT_COLS]
     y = shuffled["lc"]
     model = RandomForestRegressor(n_estimators=60, max_depth=14, min_samples_leaf=5, random_state=42, n_jobs=-1)
@@ -322,7 +323,7 @@ div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16
 .hibp-ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}
 .hibp-na{background:#f5f7fa;color:#5b6472;border:1px solid #e2e6ee}
 .chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
-.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
+.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}.na{background:#f2f4f8;color:#5b6472;border:1px solid #e2e6ee}
 .tip-item{background:#f8f9fc;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13.2px;line-height:1.55;color:#1d1d1f;border-left:4px solid #5b8def;word-break:keep-all}
 .tip-item.warn{border-left-color:#ff3b30;background:#fff8f7}
 .tip-item.good{border-left-color:#4cc38a;background:#f4fbf7}
@@ -360,7 +361,7 @@ with st.container(key="hdr"):
         hc[1].segmented_control("메뉴", NAMES, key="nav", label_visibility="collapsed", on_change=_keep)
     else:
         hc[1].radio("메뉴", NAMES, horizontal=True, label_visibility="collapsed", key="nav")
-    hc[2].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False), use_container_width=True)
+    hc[2].button("▶ 인트로", on_click=lambda: st.session_state.update(splash=False), **_BTN_W)
 
 cur = st.session_state.get("nav") or NAMES[0]
 st.session_state["last_nav"] = cur
@@ -653,14 +654,14 @@ def diagnose(pw: str, example_label: str = None):
     score = float(np.clip((adj_lc + 2.0) / 14.0 * 100.0, 0, 100))
 
     common = low in TOP
-    hibp_cnt = check_hibp(pw)
+    hibp_cnt = check_hibp(pw)          # 유출 횟수(없으면 0, 조회 실패면 None) — 횟수만 표시하고 시간 계산에는 쓰지 않음
+    leaked = hibp_cnt is not None and hibp_cnt > 0
 
     if common:
         score = min(score, 5.0)
-        est_sec = min(est_sec, 1.0)
-    elif hibp_cnt is not None and hibp_cnt > 0:
+        est_sec = min(est_sec, 1.0)    # 흔한 목록은 사전 대입 공격으로 즉시 뚫린다는 기준(질문 2 안내와 동일)
+    elif leaked:
         score = min(score, 10.0 if hibp_cnt < 100 else 5.0)
-        est_sec = min(est_sec, 1.0)
 
     st.session_state["diag"] = dict(
         L=L, score=score, est_sec=est_sec, pct=pct, common=common, hibp=hibp_cnt,
@@ -688,7 +689,7 @@ def p_check():
             ("🎲 예시: 무작위형", "무작위형", "vK9#mQ2$zL7@pW4xR8")
         ]
         for i, (col, (btn_lab, ex_name, ex_val)) in enumerate(zip(top_row[1:], examples)):
-            if col.button(btn_lab, key=f"d_ex{i}", use_container_width=True):
+            if col.button(btn_lab, key=f"d_ex{i}", **_BTN_W):
                 diagnose(ex_val, example_label=ex_name)
 
     d = st.session_state.get("diag")
@@ -740,31 +741,39 @@ def p_check():
             show(style(vf, 215, t=22), "d2")
 
         with c2:
+            # 유출 횟수만 표시(시간 계산에는 사용하지 않음). 조회 실패는 '확인 불가'로 표시하고 안전으로 간주하지 않음.
             if hibp_cnt is None:
-                hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 HIBP 유출 DB 실시간 조회</span><span>네트워크 미연결 (로컬 진단)</span></div>'
+                hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 HIBP 유출 횟수 조회</span><span>조회 실패 · 확인 불가</span></div>'
+                hibp_chip = ("유출 확인 불가", None)
             elif hibp_cnt > 0:
-                hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 HIBP 실제 유출 이력 발견</span><span>전 세계 {hibp_cnt:,}회 유출</span></div>'
+                hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 HIBP 유출 횟수</span><span>전 세계 {hibp_cnt:,}회</span></div>'
+                hibp_chip = ("유출 이력 있음", False)
             else:
-                hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ HIBP 실제 유출 이력 조회</span><span>유출 기록 없음 (0회)</span></div>'
+                hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ HIBP 유출 횟수</span><span>0회 (기록 없음)</span></div>'
+                hibp_chip = ("유출 이력 없음", True)
 
             chips = [
-                ("8자 이상", d["L"] >= 8), ("12자 이상", d["L"] >= 12), ("대문자 포함", d["up"]),
-                ("숫자 포함", d["dg"]), ("특수문자 포함", d["sp"]), ("유출 이력 없음", not d["common"] and not leaked),
+                ("12자 이상", d["L"] >= 12), ("대문자 포함", d["up"]), ("숫자 포함", d["dg"]),
+                ("특수문자 포함", d["sp"]), ("흔한 목록 아님", not d["common"]), hibp_chip,
                 ("연속 문자 없음", not d["seq"]), ("반복 문자 없음", not d["rep"]), ("연도/날짜 없음", not d["yr"])
             ]
-            ch = "".join(f'<div class="chip {"ok" if v else "no"}">{"✓" if v else "✕"} {k}</div>' for k, v in chips)
+            ch = "".join(
+                f'<div class="chip {"na" if v is None else "ok" if v else "no"}">{"–" if v is None else "✓" if v else "✕"} {k}</div>'
+                for k, v in chips
+            )
+            time_sub = "흔한 목록 → 사전 대입 시 즉시" if d["common"] else "무차별 대입 + 패턴 보정"
 
             md(f"""<div class="res-card">
                 <div>
                     <div class="res-hdr">
-                        <span>🤖 ML 예측 + HIBP 정밀 진단 리포트</span>
-                        <span style="font-size:12px;color:#5b6472;font-weight:600">k-익명성 검증</span>
+                        <span>🤖 ML 예측 + HIBP 유출 횟수</span>
+                        <span style="font-size:12px;color:#5b6472;font-weight:600">k-익명성 조회</span>
                     </div>
                     <div class="stat-grid">
                         <div class="stat-box">
                             <div class="stat-lbl">예상 뚫리는 시간</div>
                             <div class="stat-val">{human(d['est_sec'])}</div>
-                            <div class="stat-sub">무차별 대입 + 패턴·유출 보정</div>
+                            <div class="stat-sub">{time_sub}</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-lbl">표본 내 보안 순위</div>
@@ -783,9 +792,11 @@ def p_check():
         with c3:
             tips = []
             if leaked:
-                tips.append(("warn", "실제 유출", f"전 세계 유출 데이터베이스(HIBP)에서 <b>{hibp_cnt:,}회</b> 유출된 이력이 확인되었습니다. 크리덴셜 스터핑 공격에 즉시 노출되므로 바로 변경하세요."))
+                tips.append(("warn", "실제 유출", f"HIBP 유출 데이터베이스에서 <b>{hibp_cnt:,}회</b> 확인되었습니다. 이미 공개된 비밀번호이니 바로 변경하세요."))
             if d["common"]:
                 tips.append(("warn", "긴급", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 무차별 대입 시간과 무관하게 사전 대입 공격으로 1초 내에 뚫립니다."))
+            if hibp_cnt is None:
+                tips.append(("norm", "조회 실패", "HIBP 서버에 연결하지 못해 유출 횟수는 확인하지 못했습니다. 안전하다는 뜻이 아니니 잠시 후 다시 점검해 보세요."))
             if d["L"] < 12:
                 tips.append(("norm", "길이 보강", f"현재 길이(<b>{d['L']}자</b>)는 다소 짧습니다. 최소 12자 이상으로 늘리면 방어 시간이 기하급수적으로 증가합니다."))
             if not (d["up"] and d["dg"] and d["sp"]):
@@ -793,7 +804,7 @@ def p_check():
             if d["seq"] or d["rep"] or d["yr"]:
                 tips.append(("norm", "패턴 제거", "키보드 연속 배열(qwerty, 123), 반복 문자(aaa), 연도/생일(2024, 0315) 패턴을 제거하세요."))
             if not tips:
-                tips.append(("good", "최상 등급", "HIBP 유출 이력이 없고 길이와 문자 다양성도 우수합니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
+                tips.append(("good", "최상 등급", "HIBP 유출 기록이 없고 길이와 문자 다양성도 우수합니다. 중요 계정에는 2단계 인증(OTP/패스키)을 함께 켜두세요."))
 
             tip_html = "".join(f'<div class="tip-item {cls}"><span class="tip-tag">{tag}</span>{txt}</div>' for cls, tag, txt in tips)
             md(f"""<div class="res-card" style="justify-content:flex-start">
