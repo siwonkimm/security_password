@@ -22,6 +22,15 @@ YR = 31557600
 CAND = [1e-3, 1, 60, 3600, 86400, YR, YR * 1e2, YR * 1e4, YR * 1e6, YR * 1e9, YR * 1e12, YR * 1e18, YR * 1e24, YR * 1e36]
 
 SRC = {
+    "t0": (
+        "분석 데이터셋 통합 요약 (총 25,500건)",
+        "① Password Metrics Dataset(고유 25,000건): 문자 풀 크기(N)와 길이(L)의 모든 경우의 수(N^L) 기반 무차별 대입 시간(초)입니다. 등급별 약 5,000건씩 추출된 균등 표본이므로 실제 이용자 분포와 다릅니다. "
+        "② Password Strength Dataset(상위 500건): 로그인 창 직접 대입(초당 10회 가정)과 유출 해시 고속 대입(초당 10억 회 가정, 10^8배 빠름) 시간을 비교합니다. 실제 사전 공격 시에는 500개 모두 1초 내 해독됩니다.",
+        [
+            ("Password Metrics Dataset (Kaggle)", "https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset"),
+            ("Password Strength Dataset (Kaggle)", "https://www.kaggle.com/datasets/utkarshx27/passwords")
+        ]
+    ),
     "t1": (
         "Password Metrics Dataset (Kaggle) — 고유 25,000건 구조 피처",
         "원본 100,000행 중 중복을 제거한 고유 25,000개(개인정보 보호를 위해 원문은 제거하고 길이·문자 구성·패턴 등 20개 수치 피처만 저장). "
@@ -128,7 +137,7 @@ def extract_features(pw: str) -> dict:
     }
 
 def md(s, pad=True):
-    st.markdown("".join(l.strip() for l in s.splitlines()) + ('<div style="height:14px"></div>' if pad else ""), unsafe_allow_html=True)
+    st.markdown("".join(l.strip() for l in s.splitlines()) + ('<div style="height:10px"></div>' if pad else ""), unsafe_allow_html=True)
 
 def human(s):
     if s is None or not np.isfinite(s): return "측정 불가"
@@ -163,34 +172,23 @@ _PW = "width" in inspect.signature(st.plotly_chart).parameters
 def show(fig, key):
     st.plotly_chart(fig, config={"displayModeBar": False}, key=key, **(dict(width="stretch") if _PW else dict(use_container_width=True)))
 
-_bd = [0]
 def head(title, take, table_fn=None):
-    b = ""
-    if title.startswith("질문"):
-        _bd[0] = 0
-    else:
-        _bd[0] += 1
-        b = f'<span class="bd">분석 {_bd[0]}</span>'
-
     if table_fn is None:
-        md(f'<div class="sec"><div class="t">{b}{title}</div><div class="k">{take}</div></div>')
+        md(f'<div class="sec"><div class="t">{title}</div><div class="k">{take}</div></div>')
     else:
         c1, c2 = st.columns([7.8, 2.2], vertical_alignment="top")
         with c1:
-            md(f'<div class="sec" style="min-height:auto"><div class="t">{b}{title}</div></div>', pad=False)
+            md(f'<div class="sec" style="min-height:auto"><div class="t">{title}</div></div>', pad=False)
         with c2:
             with st.popover("📋 표", **_POP_W):
                 table_fn()
-        md(f'<div class="sec" style="min-height:46px;padding-top:0"><div class="k" style="margin-top:0">{take}</div></div>')
+        md(f'<div class="sec" style="min-height:24px;padding-top:0"><div class="k" style="margin-top:0">{take}</div></div>')
 
 def source(key):
     n, t, links = SRC[key]
     with st.expander("데이터 출처 · 시간(초) 계산 기준 · 표본 한계"):
         link_md = " &nbsp;|&nbsp; ".join(f"🔗 [{label}]({url})" for label, url in links)
         st.markdown(f"**{n}**\n\n{t}\n\n{link_md}")
-
-def ins(text, color=BLUE, label="핵심 요약"):
-    md(f'<div class="ins" style="border-left-color:{color}"><b>{label}</b>{text}</div>')
 
 def tile_grid(qq):
     lo, hi = 0.0, 7.5
@@ -221,20 +219,20 @@ def infographic(cards):
 def kpis(items):
     cards = "".join(
         f'<div class="c" style="animation-delay:{i*70}ms"><div class="l">{l}</div>'
-        f'<div class="v" style="font-size:{25 if isinstance(v,(int,float)) else 18}px">'
+        f'<div class="v" style="font-size:{25 if isinstance(v,(int,float)) else 19}px">'
         f'<span class="n" data-v="{v if isinstance(v,(int,float)) else ""}" data-d="{d}">'
         f'{v if not isinstance(v,(int,float)) else f"{v:,.{d}f}"}</span><span class="u">{u}</span></div></div>'
         for i, (l, v, d, u) in enumerate(items)
     )
     h = f"""<style>
-    body{{margin:0;padding:4px 2px 10px;font-family:{FONT}}}.g{{display:grid;grid-template-columns:repeat({len(items)},minmax(0,1fr));gap:12px}}
+    body{{margin:0;padding:2px 2px 8px;font-family:{FONT}}}.g{{display:grid;grid-template-columns:repeat({len(items)},minmax(0,1fr));gap:12px}}
     .c{{background:#fff;border-radius:18px;padding:14px 16px 16px;border-left:5px solid #4cc38a;box-shadow:0 2px 12px rgba(0,0,0,.06);animation:u .5s ease both;min-width:0}}
-    .l{{color:#6e6e73;font-size:12.3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+    .l{{color:#6e6e73;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
     .v{{margin-top:6px;color:#1d1d1f;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}}.u{{font-size:13.5px;color:#6e6e73;margin-left:3px}}
     @keyframes u{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}</style>
     <div class="g">{cards}</div><script>document.querySelectorAll('.n').forEach(e=>{{const t=parseFloat(e.dataset.v);if(isNaN(t))return;const d=+e.dataset.d,s=performance.now();
     const f=n=>{{const p=Math.min((n-s)/900,1),x=1-Math.pow(1-p,3);e.textContent=(t*x).toLocaleString('en-US',{{minimumFractionDigits:d,maximumFractionDigits:d}});if(p<1)requestAnimationFrame(f)}};requestAnimationFrame(f)}})</script>"""
-    try: components.html(h, height=114)
+    try: components.html(h, height=110)
     except Exception: md("".join(f"<b>{l}</b> {v}{u} &nbsp; " for l, v, d, u in items))
 
 def _find_file(name):
@@ -277,7 +275,7 @@ md("""<style>@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.
 html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif!important;overflow-x:hidden}
 .stApp{background:#e9edf2}#MainMenu,footer{visibility:hidden}[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"]{display:none!important}
 [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none}
-.block-container{max-width:1520px;width:100%;box-sizing:border-box;padding:.9rem 1.4rem 1.3rem;position:relative;z-index:1;animation:up .6s both}[data-testid="stVerticalBlock"]{gap:.5rem}
+.block-container{max-width:1520px;width:100%;box-sizing:border-box;padding:.9rem 1.4rem 1.2rem;position:relative;z-index:1;animation:up .6s both}[data-testid="stVerticalBlock"]{gap:.48rem}
 @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes wipe{from{opacity:0;clip-path:inset(0 100% 0 0 round 22px)}to{opacity:1;clip-path:inset(0 0 0 0 round 22px)}}
 
@@ -296,47 +294,44 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 .st-key-hdr [role="radiogroup"]{flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:center}.st-key-hdr [role="radiogroup"] label{padding:8px 14px;border-radius:13px;background:#1a2547;border:1px solid #2a3868}
 .st-key-hdr button[kind="secondary"]{background:#1a2547;border:1px solid #2a3868;border-radius:13px;height:44px!important;min-height:44px!important;padding:0 14px!important}
 
-.sec{padding:3px 2px 3px;min-height:66px}.sec .t{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.5px;color:#5b6472;margin-top:4px;line-height:1.5;word-break:keep-all}
-.bd{background:#5b8def;color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px}
+.sec{padding:2px 2px;min-height:58px}.sec .t{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.35}.sec .k{font-size:12.5px;color:#5b6472;margin-top:4px;line-height:1.48;word-break:keep-all}
 div[data-testid="stPlotlyChart"]{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:wipe .9s cubic-bezier(.2,.8,.2,1) both;transition:box-shadow .3s}
 div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16)}
-.ins{background:#fff;border-left:5px solid #5b8def;border-radius:14px;padding:12px 18px;font-size:13.8px;line-height:1.62;box-shadow:0 2px 12px rgba(0,0,0,.05);animation:up .6s both;word-break:keep-all}.ins>b:first-child{margin-right:8px}
 
-/* 두 가지 공격 기준 안내 카드 */
-.meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.meta-card{background:#fff;border-radius:16px;padding:11px 16px;border:1px solid #e2e8f2;box-shadow:0 2px 10px rgba(0,0,0,.04);display:flex;align-items:center;gap:12px;word-break:keep-all}
-.meta-ic{font-size:24px;flex:none;background:#f2f6ff;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center}
-.meta-card.key .meta-ic{background:#fff2f0}
-.meta-ttl{font-size:13.5px;font-weight:800;color:#1d1d1f;margin-bottom:2px}
-.meta-dsc{font-size:12.2px;color:#5b6472;line-height:1.45}
-
-/* 진단 배너 · What-If 바 · 결과 카드 */
-.diag-target{background:#fff;border-radius:16px;padding:10px 18px;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border:1px solid #e2e8f2;animation:up .4s both}
+/* 진단 배너 · 결과 카드 */
+.diag-target{background:#fff;border-radius:16px;padding:9px 16px;box-shadow:0 2px 10px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border:1px solid #e2e8f2;animation:up .4s both}
 .diag-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:8px;background:#eef3ff;color:#2b5fc7}
 .diag-badge.user{background:#f2f4f8;color:#4b5563}
 .diag-code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:14px;font-weight:800;background:#f5f7fa;color:#1d1d1f;padding:3px 11px;border-radius:8px;border:1px solid #dce2ec;letter-spacing:.03em}
-.wi-banner{background:#f5f8ff;border:1px solid #d6e4ff;border-radius:14px;padding:10px 16px;font-size:13.2px;line-height:1.55;color:#1d1d1f;word-break:keep-all}
-.wi-banner.warn{background:#fff6f5;border-color:#ffd5cf}
-.res-card{background:#fff;border-radius:22px;padding:18px 20px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:462px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
-.res-hdr{font-size:16px;font-weight:800;color:#1d1d1f;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.grade-pill{font-size:12.5px;font-weight:800;padding:4px 11px;border-radius:99px;color:#fff!important}
-.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
-.stat-box{background:#f5f7fa;border-radius:15px;padding:11px 13px;border:1px solid #e8ecf2}
-.stat-lbl{font-size:11.8px;font-weight:600;color:#6e6e73;margin-bottom:3px}
-.stat-val{font-size:19.5px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:458px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
+.res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.grade-pill{font-size:12.5px;font-weight:800;padding:4px 12px;border-radius:99px;color:#fff!important}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.stat-box{background:#f5f7fa;border-radius:15px;padding:13px 15px;border:1px solid #e8ecf2}
+.stat-lbl{font-size:12px;font-weight:600;color:#6e6e73;margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat-sub{font-size:11.5px;color:#5b6472;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hibp-bar{border-radius:12px;padding:8px 13px;margin-bottom:7px;font-size:12.4px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hibp-bar{border-radius:12px;padding:9px 14px;margin-bottom:8px;font-size:12.8px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .hibp-bad{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
 .hibp-ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}
 .hibp-na{background:#f5f7fa;color:#5b6472;border:1px solid #e2e6ee}
-.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:6px}
-.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 5px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}.na{background:#f2f4f8;color:#5b6472;border:1px solid #e2e6ee}
-.tip-item{background:#f8f9fc;border-radius:12px;padding:11px 13px;margin-bottom:9px;font-size:12.9px;line-height:1.52;color:#1d1d1f;border-left:4px solid #5b8def;word-break:keep-all}
-.tip-item.warn{border-left-color:#ff3b30;background:#fff8f7}
-.tip-item.good{border-left-color:#4cc38a;background:#f4fbf7}
-.tip-tag{display:inline-block;font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;margin-right:6px;background:#e5edff;color:#2b5fc7}
-.tip-item.warn .tip-tag{background:#ffe3e0;color:#c92a20}
-.tip-item.good .tip-tag{background:#dcf5e6;color:#157332}
+.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}.na{background:#f2f4f8;color:#5b6472;border:1px solid #e2e6ee}
+
+/* 탭 2 비밀번호 해킹 수법 설명 카드 */
+.atk-card{background:#fff;border-radius:22px;padding:14px 16px;box-shadow:0 2px 14px rgba(0,0,0,.05);min-height:310px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;gap:8px;animation:up .6s both}
+.atk-item{background:#f7f9fc;border-radius:13px;padding:9px 12px;border-left:4px solid #5b8def}
+.atk-item.w1{border-left-color:#ff3b30;background:#fff8f7}
+.atk-item.w2{border-left-color:#ff9f0a;background:#fffaf2}
+.atk-item.w3{border-left-color:#5b8def}
+.atk-item.w4{border-left-color:#4cc38a;background:#f4fbf7}
+.atk-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.atk-name{font-size:13.2px;font-weight:800;color:#1d1d1f}
+.atk-tag{font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:#e5edff;color:#2b5fc7;white-space:nowrap}
+.atk-item.w1 .atk-tag{background:#ffe3e0;color:#c92a20}
+.atk-item.w2 .atk-tag{background:#ffedd1;color:#b86200}
+.atk-item.w4 .atk-tag{background:#dcf5e6;color:#157332}
+.atk-desc{font-size:12px;line-height:1.42;color:#4b5563;word-break:keep-all}
 
 span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="slider"]{background:#5b8def!important}[data-testid="stExpander"]{border-radius:14px;background:#fff}
 [data-testid="stPopover"] button{border-radius:99px!important;padding:2px 10px!important;min-height:30px!important;font-size:12px!important;font-weight:700!important;background:#fff!important;border:1px solid #d5dbe5!important;box-shadow:0 1px 4px rgba(0,0,0,.04)!important}
@@ -345,11 +340,11 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 .spl div{color:#fff;font-size:clamp(30px,5.8vw,62px);font-weight:800;letter-spacing:-.03em;animation:si 1.3s cubic-bezier(.2,.8,.2,1) both}
 @keyframes si{from{opacity:0;transform:scale(.92);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}@keyframes so{0%,72%{opacity:1}100%{opacity:0;visibility:hidden}}
 .tg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#fff;border-radius:22px;padding:14px;box-shadow:0 2px 14px rgba(0,0,0,.05);height:310px;overflow-y:auto;box-sizing:border-box;align-content:start}.tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cfd6e4;border-radius:6px}.tl{border-radius:14px;padding:10px 6px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;animation:up .4s both;transition:transform .25s}.tl:hover{transform:translateY(-3px) scale(1.03)}.tl b{font-size:14px;color:#1d1d1f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk{font-size:11px;color:rgba(0,0,0,.55);font-weight:600}.tm{font-size:12px;font-weight:700;color:rgba(0,0,0,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:16px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:36px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:13px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96;word-break:keep-all}
+.igs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ig{display:flex;gap:14px;align-items:center;border-radius:22px;padding:15px 18px;color:#fff;animation:up .6s both;min-width:0;box-shadow:0 8px 22px rgba(60,90,140,.18);transition:transform .25s}.ig:hover{transform:translateY(-4px)}.ig:nth-child(1){background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}.ig:nth-child(2){background:linear-gradient(135deg,#f0554a,#ff8f7a)}.ig:nth-child(3){background:linear-gradient(135deg,#e8860a,#ffb347)}.ig:nth-child(4){background:linear-gradient(135deg,#2ea36f,#6fd6a3)}.ic{font-size:36px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}.ib{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}.ib small{font-size:13px;font-weight:700;margin-left:3px;opacity:.92}.icp{font-size:12px;line-height:1.45;margin-top:5px;opacity:.96;word-break:keep-all}
 
-html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t,.ins,.ins b{color:#1d1d1f}.sec .k{color:#5b6472}.ins{color:#1d1d1f}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
+html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t{color:#1d1d1f}.sec .k{color:#5b6472}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
 
-.st-key-chk_panel,.st-key-wi_panel{background:#fff;border-radius:20px;padding:12px 16px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
+.st-key-chk_panel,.st-key-wi_panel{background:#fff;border-radius:18px;padding:10px 15px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
 .st-key-chk_panel [data-testid="stHorizontalBlock"],.st-key-wi_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
 .st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button,.st-key-d_ex3 button{width:100%;min-height:42px;padding:0 8px!important;border-radius:13px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}
 .st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}
@@ -381,10 +376,6 @@ if "nav" not in st.session_state: st.session_state["nav"] = NAMES[0]
 def _keep():
     if st.session_state.get("nav") is None: st.session_state["nav"] = st.session_state.get("last_nav", NAMES[0])
 
-def _go_nav(target_name: str):
-    st.session_state["nav"] = target_name
-    st.session_state["last_nav"] = target_name
-
 with st.container(key="hdr"):
     hc = st.columns([2.35, 8.45, 1.2], vertical_alignment="center")
     hc[0].markdown('<div class="ht">🔐 비밀번호 보안 분석</div>', unsafe_allow_html=True)
@@ -408,7 +399,8 @@ def multi_pick(col, label, options, key):
         if hasattr(st, "pills"): return st.pills(label, options, selection_mode="multi", key=key, label_visibility="collapsed") or []
         return st.multiselect(label, options, key=key, label_visibility="collapsed")
 
-def filters(n=3): return st.columns([2.2, 2.2, 2.8][:n], vertical_alignment="center")
+def filter_row():
+    return st.columns([2.7, 2.7, 4.6], vertical_alignment="center")
 
 def _eval_struct(pw: str) -> dict:
     feats = extract_features(pw)
@@ -509,25 +501,7 @@ def p_lab():
         "입력한 비밀번호는 저장되지 않으며, 유출 조회 시에도 SHA-1 해시 앞 5자리만 전송(k-익명성)해 안전하게 진단합니다."
     )
 
-    md("""<div class="meta-grid">
-        <div class="meta-card">
-            <div class="meta-ic">🔢</div>
-            <div>
-                <div class="meta-ttl">진단 기준 1 · 모든 조합 대입 (예상 버팀 시간)</div>
-                <div class="meta-dsc">가능한 글자 조합을 처음부터 하나씩 맞춰볼 때 걸리는 시간입니다. 글자 수와 문자 종류를 늘릴수록 기하급수적으로 길어집니다.</div>
-            </div>
-        </div>
-        <div class="meta-card key">
-            <div class="meta-ic">⚠️</div>
-            <div>
-                <div class="meta-ttl">진단 기준 2 · 유출·흔한 목록 대조 (사전 공격)</div>
-                <div class="meta-dsc">상위 500개 흔한 비밀번호나 실제 유출 목록(HIBP)에 이미 포함된 비밀번호는 계산상 버팀 시간과 무관하게 <b>1초 이내</b>에 뚫립니다.</div>
-            </div>
-        </div>
-    </div>""")
-
     with st.container(key="chk_panel"):
-        md('<div style="font-size:13px;font-weight:700;color:#1d1d1f;margin-bottom:7px">직접 입력하거나, 오른쪽 4가지 대표 유형을 눌러 바로 비교해 보세요</div>', pad=False)
         top_row = st.columns([4.0, 1.5, 1.5, 1.5, 1.5], vertical_alignment="center")
         with top_row[0]:
             with st.form("f", clear_on_submit=True, border=False):
@@ -578,8 +552,7 @@ def p_lab():
             f'<span class="diag-code">{_html.escape(str(code_txt))}</span>'
             f'</div>'
             f'<span style="font-size:12.5px;color:#5b6472;font-weight:700">길이 {act_sc["L"]}자</span>'
-            f'</div>',
-            pad=False
+            f'</div>'
         )
     else:
         mode_note = f"직접 입력 진단 ({act_sc['label']} 적용)" if wi_key != "base" else "직접 입력 진단"
@@ -587,36 +560,13 @@ def p_lab():
             f'<div class="diag-target">'
             f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
             f'<span class="diag-badge user">🔒 {mode_note}</span>'
-            f'<span style="font-size:12.5px;font-weight:600;color:#5b6472">입력한 비밀번호는 보안상 화면에 표시하거나 저장하지 않습니다.</span>'
+            f'<span style="font-size:12.5px;font-weight:600;color:#5b6472">보안상 원문은 화면에 표시하거나 저장하지 않습니다.</span>'
             f'</div>'
             f'<span style="font-size:12.5px;color:#5b6472;font-weight:700">길이 {act_sc["L"]}자</span>'
-            f'</div>',
-            pad=False
+            f'</div>'
         )
 
-    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
-
-    mult_sp = max(1.0, scs["sp1"]["sec"] / max(base_sc["sec"], 1e-6))
-    mult_act = max(1.0, act_sc["sec"] / max(base_sc["sec"], 1e-6))
-    warn_leak_origin = d["base_common"] or leaked
-
-    if wi_key == "base":
-        b_cls = "wi-banner warn" if warn_leak_origin else "wi-banner"
-        extra_w = " 단, 이미 유출·흔한 목록에 포함된 비밀번호는 뒤에 글자만 덧붙이지 말고 기본 단어 자체를 변경해야 안전합니다." if warn_leak_origin else ""
-        md(
-            f'<div class="{b_cls}"><b>전후 비교 요약:</b> 현재 예상 버팀 시간은 <b>{human(base_sc["sec"])}</b>입니다. '
-            f'여기에 <b>특수문자 1개</b>를 추가하면 <b>{human(scs["sp1"]["sec"])}</b>(약 ×{mult_sp:,.0f}배), '
-            f'<b>특수문자 + 4자</b>를 추가하면 <b>{human(scs["both"]["sec"])}</b>으로 증가합니다.{extra_w}</div>'
-        )
-    else:
-        b_cls = "wi-banner warn" if warn_leak_origin else "wi-banner"
-        extra_w = " (원래 비밀번호가 유출·흔한 목록에 있었으므로 실제 변경 시에는 기본 단어도 함께 바꾸세요.)" if warn_leak_origin else ""
-        md(
-            f'<div class="{b_cls}"><b>실험 결과 ({act_sc["label"]}):</b> 예상 버팀 시간이 <b>{human(base_sc["sec"])}</b>에서 '
-            f'<b>{human(act_sc["sec"])}</b>으로 <b>약 ×{mult_act:,.0f}배</b> 길어졌습니다.{extra_w}</div>'
-        )
-
-    c1, c2, c3 = st.columns([3.4, 3.4, 3.2])
+    c1, c2 = st.columns([5.2, 4.8])
     with c1:
         order_keys = ["base", "sp1", "len4", "both"]
         y_lbls = [f"{scs[k]['short']} ({scs[k]['L']}자)" for k in order_keys]
@@ -641,10 +591,10 @@ def p_lab():
         fig_wi.update_xaxes(
             tickvals=[p[0] for p in t_pairs],
             ticktext=[p[1] for p in t_pairs],
-            range=[0, max(max(l_vals) + 3.2, math.log10(YR) + 3.2) + 4.8]
+            range=[0, max(max(l_vals) + 3.2, math.log10(YR) + 3.2) + 4.5]
         )
         fig_wi.update_yaxes(autorange="reversed", showgrid=False)
-        show(style(fig_wi, 238, t=42, l=10, r=24), f"d_wi_{wi_key}_{act_sc['L']}")
+        show(style(fig_wi, 236, t=42, l=10, r=24), f"d_wi_{wi_key}_{act_sc['L']}")
 
         vf = go.Figure([go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard") for g_ in ORDER])
         if wi_key != "base" and act_sc["L"] != base_sc["L"]:
@@ -712,43 +662,11 @@ def p_lab():
                 {hibp_html}
             </div>
             <div>
-                <div style="font-size:13px;font-weight:800;color:#1d1d1f;margin-bottom:5px">9대 보안 구성 체크리스트 {"(실험 반영)" if wi_key != "base" else ""}</div>
+                <div style="font-size:13.5px;font-weight:800;color:#1d1d1f;margin-bottom:6px">9대 보안 구성 체크리스트 {"(실험 반영)" if wi_key != "base" else ""}</div>
                 <div class="chk-grid">{ch}</div>
             </div>
         </div>""")
 
-    with c3:
-        tips = []
-        if leaked:
-            tips.append(("warn", "실제 유출", f"HIBP 유출 데이터베이스에서 <b>{hibp_cnt:,}회</b> 확인되었습니다. 이미 외부에 공개된 비밀번호이므로 즉시 변경하세요."))
-        if base_sc["common"]:
-            tips.append(("warn", "흔한 비밀번호", "전 세계 상위 500위 안에 드는 흔한 비밀번호입니다. 연산 시간과 무관하게 사전 대입 공격으로 1초 내에 뚫립니다."))
-        if hibp_cnt is None:
-            tips.append(("norm", "조회 실패", "HIBP 서버에 연결하지 못해 유출 여부는 확인하지 못했습니다. 안전하다는 뜻이 아니니 잠시 후 다시 점검해 보세요."))
-        if act_sc["L"] < 12:
-            tips.append(("norm", "길이 보강", f"현재 길이(<b>{act_sc['L']}자</b>)는 다소 짧습니다. 최소 12자 이상으로 늘리면 대입해야 할 경우의 수가 기하급수적으로 증가합니다."))
-        if not (act_sc["up"] and act_sc["dg"] and act_sc["sp"]):
-            tips.append(("norm", "문자 조합", "영문 대소문자, 숫자, 특수문자를 고르게 섞으면 한 자리당 탐색해야 할 후보 문자 수가 크게 넓어집니다."))
-        if act_sc["seq"] or act_sc["rep"] or act_sc["yr"]:
-            tips.append(("norm", "패턴 제거", "키보드 연속 배열(qwerty, 1234), 동일 문자 반복(aaa), 연도·생일(2024, 0315)은 공격 도구가 우선 대입하는 패턴입니다."))
-        if not tips:
-            tips.append(("good", "최상 등급", "유출 기록이 없고 길이와 문자 다양성 모두 우수합니다. 주요 계정에는 2단계 인증(패스키·OTP)을 함께 설정해 두세요."))
-
-        tips.append((
-            "norm", "데이터 검증",
-            "방금 실험한 <b>길이와 문자 조합의 방어 효과</b>, 그리고 <b>흔한 비밀번호의 위험성</b>을 상단 <b>2~4번 탭</b>의 25,500건 공개 데이터 차트로 검증해 보세요."
-        ))
-
-        tip_html = "".join(f'<div class="tip-item {cls}"><span class="tip-tag">{tag}</span>{txt}</div>' for cls, tag, txt in tips[:4])
-        md(f"""<div class="res-card" style="justify-content:space-between">
-            <div>
-                <div class="res-hdr"><span>맞춤 보안 처방 가이드</span></div>
-                <div>{tip_html}</div>
-            </div>
-        </div>""")
-
-    nb = st.columns([7.4, 2.6])
-    nb[1].button("다음 · 2. 공격 방식과 속도 비교 →", on_click=_go_nav, args=(NAMES[1],), **_BTN_W)
     source("t3")
 
 def p_intro():
@@ -756,19 +674,11 @@ def p_intro():
         "질문 2. 공격 방식에 따라 비밀번호가 뚫리는 속도는 얼마나 달라질까?",
         "공개 데이터 25,500건을 바탕으로 로그인 창 직접 대입(초당 10회)과 유출 파일 고속 대입(초당 10억 회)의 위험도를 비교합니다."
     )
-    fl = filters(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
-    tk = fl[0].select_slider("이 시간 안에 뚫리면 '위험'으로 집계합니다", options=list(TS), value="1년", key="i_t"); T = TS[tk]
+    fl = filter_row(); TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
+    tk = fl[0].select_slider("위험 집계 기준 시간", options=list(TS), value="1년", key="i_t"); T = TS[tk]
     Ln = fl[1].slider("비교할 내 비밀번호 길이(자)", 4, 24, 8, key="i_l")
-    fl[2].caption("↻ 기준 시간과 길이를 바꾸면 아래 지표와 차트 3개가 함께 바뀝니다")
 
     pc = [(M.crack_time_sec <= T).mean() * 100, (P.online_sec <= T).mean() * 100, (P.offline_crack_sec <= T).mean() * 100]
-    ins(
-        f"같은 <b>{tk}</b> 기준이라도 <b>로그인 창 직접 대입(초당 10회)</b>으로는 흔한 비밀번호의 <b>{pc[1]:.0f}%</b>가 뚫리지만, "
-        f"유출된 암호화 파일을 장비로 돌리는 <b>유출 파일 고속 대입(초당 10억 회, 1억 배 빠름)</b>으로는 <b>{pc[2]:.0f}%</b>가 뚫립니다. "
-        f"게다가 흔한 목록부터 먼저 넣어보는 <b>사전 대입 공격</b> 앞에서는 상위 500개 모두 계산 시간과 무관하게 <b>1초 이내 즉시</b> 해독됩니다.",
-        GREEN, "공격 방식별 차이"
-    )
-
     gap = float((P.lon - P.lof).median())
     slp = float(np.polyfit(M.length, M.lc, 1)[0])
     infographic([
@@ -778,14 +688,14 @@ def p_intro():
         ("📏", f"×{10 ** slp:.0f}", "배 / 1자", "비밀번호가 1자 길어질 때 버팀 시간이 늘어나는 평균 배율")
     ])
 
-    x1, x2, x3 = st.columns([3.5, 3.2, 3.3])
+    x1, x2, x3 = st.columns([3.4, 3.2, 3.4])
     with x1:
         sub_l = M[M.length.between(Ln - 2, Ln + 2)]
         pl = float((sub_l.crack_time_sec <= T).mean() * 100) if len(sub_l) else 0.0
         wf = [pl, pc[1], pc[2]]
         head(
-            "100개 중 몇 개가 위험할까? (와플 차트)",
-            f"빨간 칸 1개 = {tk} 안에 뚫리는 비율 1%입니다. 내 길이({Ln}자±2자) 표본과 흔한 비밀번호의 공격 방식별 위험 비율을 비교합니다."
+            "100개 중 몇 개가 뚫릴까?",
+            f"{tk} 안에 뚫리는 비율입니다. 내 길이({Ln}자±2자) 표본과 흔한 비밀번호의 공격 환경별 위험도를 비교합니다."
         )
         ttl = [f"내 길이({Ln}자±2)", "로그인 창 대입", "유출 파일 대입"]
         fig = make_subplots(rows=1, cols=3, subplot_titles=[f"{t}<br><b>{p:.0f}%</b>" for t, p in zip(ttl, wf)])
@@ -807,10 +717,10 @@ def p_intro():
 
         ln_med = _med_sec(M.length == Ln, Ln)
         ln_str = human(ln_med).replace(" (1ms 미만)", "")
-        verdict = "기준보다 오래 버팁니다" if ln_med > T else "기준 안에 뚫립니다"
+        verdict = "오래 버팁니다" if ln_med > T else "빨리 뚫립니다"
         head(
-            "특수문자 포함 vs 글자 수 증가 비교 (막대 차트)",
-            f"선택한 {Ln}자의 중앙값은 {ln_str}으로 기준({tk})보다 {verdict}. 점선 오른쪽(초록)이 기준 이상 버티는 구간입니다."
+            "특수문자 포함 vs 글자 수 증가",
+            f"선택한 {Ln}자 표본의 중앙값은 {ln_str}으로 기준({tk})보다 {verdict}."
         )
         groups = [
             ("8자 · 특수문자 포함", _med_sec((M.length == 8) & (M.n_special > 0), 8)),
@@ -845,49 +755,38 @@ def p_intro():
 
     with x3:
         head(
-            "길이별 버팀 시간 증가 추세 (회귀 추세선)",
-            "파란 점은 길이별 중앙값, 검은 점선은 지수 회귀 추세선입니다. 빨간 기준선(1년) 위에 머무르려면 최소 11~12자 이상이 필요합니다."
+            "해커들은 어떤 방법으로 비밀번호를 뚫을까?",
+            "실제 공격은 무작정 대입하기보다 유출 목록과 흔한 패턴을 먼저 노리는 순서로 진행됩니다."
         )
-        g_i = M[M.length <= 24].groupby("length").agg(n=("lc", "size"), med=("crack_time_sec", "median")).query("n>=15").reset_index()
-        y_i = np.log10(g_i.med.clip(lower=1e-3))
-        coef = np.polyfit(g_i.length, y_i, 1)
-        r2_i = float(np.corrcoef(g_i.length, y_i)[0, 1] ** 2)
-        y_fit = np.polyval(coef, g_i.length)
+        md("""<div class="atk-card">
+            <div class="atk-item w1">
+                <div class="atk-top"><span class="atk-name">1. 사전 대입 공격 (Dictionary)</span><span class="atk-tag">1순위 · 즉시 해독</span></div>
+                <div class="atk-desc">흔히 쓰는 단어(password, qwer1234)와 유출 빈출 목록부터 먼저 대입해 계산 시간과 무관하게 1초 내 뚫습니다.</div>
+            </div>
+            <div class="atk-item w2">
+                <div class="atk-top"><span class="atk-name">2. 크레덴셜 스터핑 (Credential Stuffing)</span><span class="atk-tag">유출 계정 재사용</span></div>
+                <div class="atk-desc">타 사이트 해킹으로 유출된 아이디·비밀번호(HIBP 기록)를 다른 서비스 로그인 창에 자동 입력해 연쇄 탈취합니다.</div>
+            </div>
+            <div class="atk-item w3">
+                <div class="atk-top"><span class="atk-name">3. 규칙 기반 변형 (Rule-based)</span><span class="atk-tag">패턴 우선 추측</span></div>
+                <div class="atk-desc">영단어 첫 글자 대문자, 끝에 연도·생일·느낌표(2024!, 0315)를 붙이는 식의 습관적 변형 패턴을 집중 탐색합니다.</div>
+            </div>
+            <div class="atk-item w4">
+                <div class="atk-top"><span class="atk-name">4. 무차별 대입 (Brute-force)</span><span class="atk-tag">최후 수단 · Nᴸ 연산</span></div>
+                <div class="atk-desc">사전과 규칙이 모두 안 통할 때만 가능한 모든 문자 조합을 대입합니다. 차트의 '버팀 시간'이 바로 이 기준입니다.</div>
+            </div>
+        </div>""")
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=g_i.length, y=y_i, mode="markers", name="길이별 중앙값",
-            marker=dict(color=BLUE, size=8),
-            customdata=[human(v).replace(" (1ms 미만)", "") for v in g_i.med],
-            hovertemplate="%{x}자 중앙값: %{customdata}<extra></extra>"
-        ))
-        fig.add_trace(go.Scatter(
-            x=g_i.length, y=y_fit, mode="lines", name=f"회귀 추세선 (R²={r2_i:.2f})",
-            line=dict(color="#1d1d1f", width=2.5, dash="dash"), hoverinfo="skip"
-        ))
-        fig.add_vline(x=Ln, line_color=GREEN, line_width=2, annotation_text=f"선택 {Ln}자", annotation_position="top right")
-        fig.add_hline(y=math.log10(YR), line_dash="dot", line_color=RED, annotation_text="안전 기준(1년)", annotation_position="bottom right")
-        fig.update_xaxes(title="비밀번호 길이(자)")
-        tick_axis(fig, min(y_i.min(), -2), max(y_i.max(), math.log10(YR) + 1))
-        show(style(fig, 310, t=34), f"i3_{Ln}")
-
-    nb = st.columns([7.4, 2.6])
-    nb[1].button("다음 · 3. 길이와 문자 조합 검증 →", on_click=_go_nav, args=(NAMES[2],), **_BTN_W)
-    with st.expander("데이터 출처 · 시간(초) 계산 기준 요약"):
-        st.markdown(
-            "- **Password Metrics Dataset (고유 25,000건):** 문자 풀 크기($N$)와 길이($L$)의 경우의 수($N^L$) 기반 무차별 대입 시간(초). 등급별 약 5,000건씩 추출된 균등 표본 — [Kaggle 바로가기](https://www.kaggle.com/datasets/karthikudyawar/password-metrics-dataset)\n"
-            "- **Password Strength Dataset (흔한 500건):** 로그인 창 대입(초당 10회) vs 유출 파일 대입(초당 10억 회) 시간 비교. 실제 사전 공격 시에는 모두 즉시 해독됨 — [Kaggle 바로가기](https://www.kaggle.com/datasets/utkarshx27/passwords)"
-        )
+    source("t0")
 
 def p_leak():
     head(
         "질문 3. 비밀번호 길이와 문자 조합을 바꾸면 얼마나 오래 버틸까?",
         "고유 비밀번호 피처 25,000건의 경우의 수(N^L) 기반 버팀 시간을 분석합니다. (원본은 등급별 약 5,000건씩 추출한 균등 표본입니다)"
     )
-    fl = filters()
+    fl = filter_row()
     gs = multi_pick(fl[0], "강도 등급", ORDER, "a_g")
     lr = fl[1].slider("길이 범위(자)", 4, 63, (4, 40), key="a_l")
-    fl[2].caption("↻ 필터를 바꾸면 상단 지표와 차트 3개가 함께 바뀝니다")
 
     f = M[M.등급.isin(gs) & M.length.between(*lr)]
     if f.empty:
@@ -896,12 +795,10 @@ def p_leak():
 
     ent_col = "entropy" if "entropy" in f.columns else "shannon"
     kpis([
-        ("선택된 표본 수", len(f), 0, "개"),
         ("길이 중앙값", float(f.length.median()), 0, "자"),
         ("문자 복잡도 (엔트로피)", float(f[ent_col].median()), 1, "bit"),
         ("버팀 시간 중앙값", human(f.crack_time_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
-        ("1년 내 뚫리는 비율", (f.crack_time_sec <= YR).mean() * 100, 0, "%"),
-        ("1시간 내 뚫리는 비율", (f.crack_time_sec <= 3600).mean() * 100, 0, "%")
+        ("1년 내 뚫리는 비율", (f.crack_time_sec <= YR).mean() * 100, 0, "%")
     ])
 
     g = f.groupby("length").agg(n=("lc", "size"), med=("crack_time_sec", "median")).query("n>=20").reset_index()
@@ -911,14 +808,14 @@ def p_leak():
     else:
         slope, r2 = float("nan"), float("nan")
 
-    x1, x2, x3 = st.columns([4, 3, 3])
+    x1, x2, x3 = st.columns([3.8, 3.1, 3.1])
     with x1:
         desc = (
-            f"길이가 1자 늘 때마다 버팀 시간이 평균 약 {10**slope:.1f}배 늘어납니다(선형 설명력 R²={r2:.2f}). 표본 20개 미만 길이는 제외했습니다."
-            if np.isfinite(slope) else "길이 구간을 넓히면 추세가 보입니다."
+            f"길이가 1자 늘 때마다 버팀 시간이 평균 약 {10**slope:.1f}배 늘어납니다 (R²={r2:.2f})."
+            if np.isfinite(slope) else "길이 구간을 넓히면 추세가 표시됩니다."
         )
         tbl_a1 = (lambda: st.dataframe(g.assign(중앙값=g.med.map(human))[["length", "n", "중앙값"]].rename(columns={"length": "길이", "n": "표본수"}), hide_index=True)) if not g.empty else None
-        head("길이가 길어질수록 얼마나 오래 버틸까? (선 그래프)", desc, table_fn=tbl_a1)
+        head("길이가 길어질수록 얼마나 오래 버틸까?", desc, table_fn=tbl_a1)
         if g.empty:
             st.info("표본이 부족합니다.")
         else:
@@ -936,7 +833,7 @@ def p_leak():
     with x2:
         stp = [("전체 시작", 0), ("1분 이상 버팀", 60), ("1시간 이상 버팀", 3600), ("1일 이상 버팀", 86400), ("1년 이상 버팀", YR), ("100년 이상 버팀", YR * 100)]
         vals = [100.0] + [(f.crack_time_sec > t).mean() * 100 for _, t in stp[1:]]
-        head("시간대별로 표본의 몇 %가 남을까? (깔때기 차트)", f"선택한 표본 중 {vals[3]:.0f}%가 1일을, {vals[4]:.0f}%가 1년을 버팁니다.")
+        head("시간대별 생존 비율", f"선택한 표본 중 {vals[3]:.0f}%가 1일을, {vals[4]:.0f}%가 1년을 버팁니다.")
         fig = go.Figure(go.Funnel(
             y=[a for a, _ in stp], x=vals, text=[f"{v:.0f}%" for v in vals], textinfo="text", textposition="inside",
             textfont=dict(size=13, color="#fff"),
@@ -946,7 +843,7 @@ def p_leak():
         show(style(fig), "a2")
 
     with x3:
-        head("문자 조합 유형별 버팀 시간 분포 (박스 플롯)", "숫자만 쓴 경우보다 영문·숫자·특수문자를 함께 섞을수록 버팀 시간 분포 전체가 크게 상승합니다.")
+        head("문자 조합 유형별 버팀 시간 분포", "숫자만 쓴 경우보다 영문·숫자·특수문자를 함께 섞을수록 버팀 시간 분포가 크게 상승합니다.")
         type_order = ["숫자만", "영문만", "영문+숫자", "특수문자 포함"]
         type_cols = [RED, ORANGE, BLUE, GREEN]
         fig = go.Figure()
@@ -958,24 +855,17 @@ def p_leak():
         fig.update_layout(showlegend=False)
         show(style(fig), "a3")
 
-    ins(
-        f"선택한 표본 {len(f):,}개 중 <b>{(f.crack_time_sec <= YR).mean():.0%}</b>가 모든 조합 대입 기준 1년 안에 뚫립니다(길이 중앙값 {int(f.length.median())}자 · 버팀 중앙값 {human(f.crack_time_sec.median())}). "
-        f"단, 이 수치는 경우의 수(Nᴸ) 이론치이므로 연도·키보드 배열 패턴이 포함되면 실제 방어 시간은 이보다 훨씬 짧아집니다."
-    )
-    nb = st.columns([7.4, 2.6])
-    nb[1].button("다음 · 4. 흔한 비밀번호 500건 검증 →", on_click=_go_nav, args=(NAMES[3],), **_BTN_W)
     source("t1")
 
 def p_common():
     head(
         "질문 4. 계산상 '7년 버틴다'는 흔한 비밀번호가 왜 실제로는 1초 만에 뚫릴까?",
-        "상위 500개 흔한 비밀번호 데이터로 로그인 창 대입(초당 10회)과 유출 파일 대입(초당 10억 회), 사전 공격의 차이를 확인합니다."
+        "상위 500개 흔한 비밀번호 데이터로 로그인 창 대입(초당 10회), 유출 파일 대입(초당 10억 회), 사전 공격의 차이를 확인합니다."
     )
-    fl = filters()
+    fl = filter_row()
     n = fl[0].slider("상위 몇 개를 볼까요?", 5, 500, 20, 5, key="b_n")
     allc = sorted(P.category.unique())
     cats = multi_pick(fl[1], "비밀번호 유형", allc, "b_c")
-    fl[2].caption("↻ 순위와 유형을 바꾸면 지표와 차트가 함께 바뀝니다")
 
     q = P[(P["rank"] <= n) & P.category.isin(cats)]
     if q.empty:
@@ -984,15 +874,13 @@ def p_common():
 
     topc = q.category.value_counts()
     kpis([
-        ("표시 중 비밀번호", len(q), 0, "개"),
-        ("가장 많은 유형", f"{topc.index[0]}", 0, f" {topc.iloc[0]/len(q):.0%}"),
         ("로그인 창 대입 · 중앙값", human(q.online_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("유출 파일 대입 · 중앙값", human(q.offline_crack_sec.median()).replace(" (1ms 미만)", ""), 0, ""),
         ("로그인 창 · 1일 내 뚫림", (q.online_sec <= 86400).mean() * 100, 0, "%"),
         ("유출 파일 · 1초 내 뚫림", (q.offline_crack_sec <= 1).mean() * 100, 0, "%")
     ])
 
-    x1, x2, x3 = st.columns([4, 3, 3])
+    x1, x2, x3 = st.columns([3.8, 3.1, 3.1])
     with x1:
         tbl_b1 = lambda: st.dataframe(
             q.assign(로그인창_대입=q.online_sec.map(human), 유출파일_대입=q.offline_crack_sec.map(human))[["rank", "password", "category", "로그인창_대입", "유출파일_대입"]]
@@ -1000,21 +888,21 @@ def p_common():
             hide_index=True
         )
         head(
-            f"상위 {len(q)}개 흔한 비밀번호의 '보안 착시' (타일 차트)",
-            "로그인 창 무차별 대입 기준 색상입니다. 글자 수가 길어 초록색(수년)으로 보여도 유출 파일 대입이나 사전 공격 앞에서는 즉시 뚫리는 착시입니다.",
+            f"상위 {len(q)}개 흔한 비밀번호의 보안 착시",
+            "글자 수가 길어 온라인 대입 시간이 수년으로 계산돼도, 유출 파일 대입이나 사전 공격 앞에서는 즉시 뚫립니다.",
             table_fn=tbl_b1
         )
         tile_grid(q)
 
     with x2:
-        head("흔한 비밀번호는 어떤 유형이 가장 많을까? (도넛 차트)", f"가장 많은 유형은 '{topc.index[0]}'({topc.iloc[0]}개)입니다. 기억하기 쉬운 단어·이름·숫자 배열이 대부분을 차지합니다.")
+        head("흔한 비밀번호의 주요 유형", f"가장 비중이 높은 유형은 '{topc.index[0]}'({topc.iloc[0]}개, {topc.iloc[0]/len(q):.0%})입니다.")
         fig = go.Figure(go.Pie(labels=topc.index, values=topc.values, hole=.58, sort=False, textinfo="percent", marker=dict(colors=px.colors.qualitative.Set3 * 2, line=dict(color="#fff", width=2))))
         fig.add_annotation(text=f"<b>{len(q)}개</b>", x=.5, y=.5, showarrow=False, font=dict(size=22))
         show(style(fig, 300).update_layout(legend=dict(orientation="v", x=1.0, y=.5, font=dict(size=11))), "b2")
 
     with x3:
         a_, b_ = (q.online_sec <= 86400).mean() * 100, (q.offline_crack_sec <= 86400).mean() * 100
-        head("로그인 창 대입 vs 유출 파일 대입 속도 비교 (누적 차트)", f"1일 안에 로그인 창 대입은 {a_:.0f}%, 유출 파일 대입은 {b_:.0f}%가 뚫립니다. 대입 속도가 1억 배 빨라 곡선이 왼쪽으로 이동합니다.")
+        head("로그인 창 대입 vs 유출 파일 대입 속도", f"1일 안에 로그인 창 대입은 {a_:.0f}%, 유출 파일 대입은 {b_:.0f}%가 뚫립니다.")
         fig = go.Figure()
         for nm, col, rgba, v in [
             ("로그인 창 대입 (초당 10회)", BLUE, "rgba(91,141,239,.18)", q.lon),
@@ -1026,14 +914,6 @@ def p_common():
         fig.update_yaxes(title="뚫린 비율(%)", range=[0, 102])
         show(style(fig), "b3")
 
-    ins(
-        f"1위 <b>'password'</b>도 로그인 창 무차별 대입(초당 10회)으로는 <b>7년</b>이 걸린다고 계산되지만, "
-        f"유출 파일 고속 대입(초당 10억 회)으로는 <b>2초</b>, 흔한 목록부터 대조하는 <b>사전 대입 공격으로는 0.001초 미만</b>에 즉시 뚫립니다. "
-        f"유출 목록에 없는 조합으로 <b>12자 이상</b> 길게 만드는 것이 핵심입니다.",
-        RED, "보안 착시 주의"
-    )
-    nb = st.columns([7.4, 2.6])
-    nb[1].button("처음으로 · 1. 내 비밀번호 실험하기 →", on_click=_go_nav, args=(NAMES[0],), **_BTN_W)
     source("t2")
 
 if page == 0: p_lab()
