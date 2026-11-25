@@ -405,60 +405,65 @@ def p_intro():
 
     x1, x2, x3 = st.columns([3.5, 3.2, 3.3])
     with x1:
-        head("100개 중 몇 개가 뚫릴까?(와플 차트)", f"네모 1칸 = 1%, 빨강은 {tk} 안에 뚫리는 비율입니다. 유출 표본은 등급별 균등 표본이라 실제 분포가 아닙니다.")
-        ttl = ["균등 추출 표본", "흔한·온라인", "흔한·오프라인"]
-        fig = make_subplots(rows=1, cols=3, subplot_titles=[f"{t}<br><b>{p:.0f}%</b>" for t, p in zip(ttl, pc)])
-        for i, p in enumerate(pc):
+        sub_l = M[M.length.between(Ln - 2, Ln + 2)]
+        pl = float((sub_l.crack_time_sec <= T).mean() * 100) if len(sub_l) else 0.0
+        wf = [pl, pc[1], pc[2]]
+        head("100개 중 몇 개가 뚫릴까?(와플 차트)", f"빨강 = {tk} 안에 뚫리는 비율(칸 1개=1%). 첫 번째는 내 길이({Ln}자)±2자 표본, 나머지는 흔한 비밀번호 전체이며 두 슬라이더에 따라 바뀝니다. 표본은 등급별 균등 추출이라 실제 분포가 아닙니다.")
+        ttl = ["내 길이 ±2자", "흔한·온라인", "흔한·오프라인"]
+        fig = make_subplots(rows=1, cols=3, subplot_titles=[f"{t}<br><b>{p:.0f}%</b>" for t, p in zip(ttl, wf)])
+        for i, p in enumerate(wf):
             z = np.zeros(100); z[:int(round(p))] = 1
             fig.add_trace(go.Heatmap(z=z.reshape(10, 10), colorscale=[[0, "#cfeedd"], [1, "#ff6b6b"]], showscale=False, xgap=3, ygap=3, hoverinfo="skip"), 1, i + 1)
             fig.update_xaxes(visible=False, row=1, col=i + 1); fig.update_yaxes(visible=False, autorange="reversed", row=1, col=i + 1)
         fig.update_annotations(font_size=11)
-        show(style(fig, 310, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), "i1")
+        show(style(fig, 310, t=64).update_layout(margin=dict(l=12, r=12, t=64, b=12)), f"i1_{tk}_{Ln}")
 
     with x2:
         def _med_sec(cond, fb_len):
-            s = M.loc[cond, "crack_time_sec"]
-            if len(s) < 10:
-                s = M.loc[M.length == fb_len, "crack_time_sec"]
-            if s.empty:
-                s = M.loc[M.length.between(fb_len - 1, fb_len + 1), "crack_time_sec"]
-            return float(s.median())
+            s_ = M.loc[cond, "crack_time_sec"]
+            if len(s_) < 10:
+                s_ = M.loc[M.length == fb_len, "crack_time_sec"]
+            if s_.empty:
+                s_ = M.loc[M.length.between(fb_len - 1, fb_len + 1), "crack_time_sec"]
+            return float(s_.median())
 
         ln_med = _med_sec(M.length == Ln, Ln)
         ln_str = human(ln_med).replace(" (1ms 미만)", "")
+        verdict = "기준보다 오래 버팁니다" if ln_med > T else "기준 안에 뚫립니다"
         head(
-            "복잡한 8자 vs 단순한 12·16자, 누가 이길까?(막대)",
-            f"특수문자를 섞은 8자보다 특수문자 없는 긴 비밀번호가 압도적으로 강합니다. (선택 {Ln}자 중앙값: {ln_str})"
+            "내 길이는 기준을 넘을까?(막대 차트)",
+            f"내 길이 {Ln}자의 중앙값은 {ln_str}으로 기준({tk})보다 {verdict}. 점선이 기준 시간이고, 막대가 점선 오른쪽이면 초록(버팀), 왼쪽이면 빨강(뚫림)입니다."
         )
         groups = [
-            ("8자 · 특수문자 포함", _med_sec((M.length == 8) & (M.n_special > 0), 8), RED),
-            ("10자 · 특수문자 없음", _med_sec((M.length == 10) & (M.n_special == 0), 10), ORANGE),
-            ("12자 · 특수문자 없음", _med_sec((M.length == 12) & (M.n_special == 0), 12), BLUE),
-            ("16자 · 특수문자 없음", _med_sec((M.length == 16) & (M.n_special == 0), 16), GREEN),
+            ("8자 · 특수문자 포함", _med_sec((M.length == 8) & (M.n_special > 0), 8)),
+            ("10자 · 특수문자 없음", _med_sec((M.length == 10) & (M.n_special == 0), 10)),
+            ("12자 · 특수문자 없음", _med_sec((M.length == 12) & (M.n_special == 0), 12)),
+            ("16자 · 특수문자 없음", _med_sec((M.length == 16) & (M.n_special == 0), 16)),
+            (f"내 길이 {Ln}자", ln_med),
         ]
         y_lbls = [g[0] for g in groups]
         meds = [g[1] for g in groups]
-        cols = [g[2] for g in groups]
+        cols = [GREEN if v > T else RED for v in meds]
         l_meds = [float(np.clip(math.log10(max(v, 1e-3)), -3, 18)) for v in meds]
         txt_lbl = [human(v).replace(" (1ms 미만)", "") for v in meds]
-
         t_pairs = [(0.2, "1ms"), (3.2, "1초"), (6.756, "1시간"), (10.699, "1년"), (12.699, "100년")]
         if max(l_meds) > 12.0:
             t_pairs.append((16.699, "10⁶년"))
-
         fig = go.Figure(go.Bar(
             y=y_lbls, x=[v + 3.2 for v in l_meds], orientation="h",
-            marker_color=cols, text=txt_lbl, textposition="outside", cliponaxis=False,
+            marker=dict(color=cols, line=dict(color="#1d1d1f", width=[0, 0, 0, 0, 3])),
+            text=txt_lbl, textposition="outside", cliponaxis=False,
             textfont=dict(size=12, weight="bold", color="#1d1d1f"),
             hovertemplate="%{y}: %{text}<extra></extra>"
         ))
+        fig.add_vline(x=math.log10(T) + 3.2, line_dash="dot", line_color="#1d1d1f", line_width=2, annotation_text=f"기준 {tk}", annotation_position="top")
         fig.update_xaxes(
             tickvals=[p[0] for p in t_pairs],
             ticktext=[p[1] for p in t_pairs],
-            range=[0, max(l_meds) + 6.5]
+            range=[0, max(max(l_meds), math.log10(T)) + 6.5]
         )
         fig.update_yaxes(showgrid=False)
-        show(style(fig, 310, t=24, l=12, r=28), "i2")
+        show(style(fig, 310, t=34, l=12, r=28), f"i2_{tk}_{Ln}")
 
     with x3:
         head("길이별 버팀 시간 추세(회귀 추세선)", "파란 점은 길이별 중앙값, 점선은 지수 회귀 추세선입니다. 빨간 점선(1년) 위에 머무르려면 최소 11~12자 이상이 필요합니다.")
@@ -483,7 +488,7 @@ def p_intro():
         fig.add_hline(y=math.log10(YR), line_dash="dot", line_color=RED, annotation_text="안전 기준(1년)", annotation_position="bottom right")
         fig.update_xaxes(title="비밀번호 길이(자)")
         tick_axis(fig, min(y_i.min(), -2), max(y_i.max(), math.log10(YR) + 1))
-        show(style(fig, 310, t=34), "i3")
+        show(style(fig, 310, t=34), f"i3_{Ln}")
 
     with st.expander("데이터 출처 · '초(시간)'의 계산 기준 요약"):
         st.markdown(
