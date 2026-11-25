@@ -588,7 +588,7 @@ def p_lab():
     with c1:
         fig_g = go.Figure(go.Indicator(
             mode="gauge+number", value=round(s),
-            number=dict(suffix="점", font=dict(size=36)),
+            number=dict(suffix="점", font=dict(size=36, color="#1d1d1f")),
             title=dict(text=f"진단 등급: {grade}", font=dict(size=15.5, color="#1d1d1f")),
             gauge=dict(
                 axis=dict(range=[0, 100]), bar=dict(color=g_col, thickness=.35), bgcolor="#f2f2f5", borderwidth=0,
@@ -600,14 +600,23 @@ def p_lab():
                 ]
             )
         ))
-        show(style(fig_g, 236, t=52, l=22, r=24, b=12), f"d_g_{wi_key}_{round(s)}_{act_sc['L']}")
+        fig_g.add_annotation(
+            text="<b>안전도</b>", x=0.5, y=0.30, xref="paper", yref="paper",
+            xanchor="center", yanchor="bottom", showarrow=False,
+            font=dict(family=FONT, size=13, color="#6e6e73")
+        )
+        show(style(fig_g, 236, t=52, l=36, r=36, b=12), f"d_g_{wi_key}_{round(s)}_{act_sc['L']}")
 
         vf = go.Figure([go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard") for g_ in ORDER])
         if wi_key != "base" and act_sc["L"] != base_sc["L"]:
             vf.add_vline(x=base_sc["L"], line_color=GRAY, line_dash="dot", annotation_text=f"기존 {base_sc['L']}자", annotation_position="bottom left")
             vf.add_vline(x=act_sc["L"], line_color=BLUE, line_width=2.5, annotation_text=f"변경 {act_sc['L']}자", annotation_position="top right")
         else:
-            vf.add_vline(x=act_sc["L"], line_color="#1d1d1f", line_dash="dash", line_width=2, annotation_text=f"내 길이 {act_sc['L']}자")
+            vf.add_vline(
+                x=act_sc["L"], line_color="#1d1d1f", line_dash="dash", line_width=2,
+                annotation_text=f"내 길이 {act_sc['L']}자", annotation_position="top right",
+                annotation=dict(bgcolor="rgba(255,255,255,0.85)", borderpad=2)
+            )
         vf.update_xaxes(title="표본 등급별 길이 분포(자)")
         show(style(vf, 216, t=22, l=10, r=18, b=14), f"d_vf_{wi_key}_{act_sc['L']}")
 
@@ -677,7 +686,7 @@ def p_lab():
             <div>
                 <div class="res-hdr">
                     <span>종합 보안 진단 결과</span>
-                    <span class="grade-pill" style="background:{g_col}">{grade} · {round(s)}점</span>
+                    <span class="grade-pill" style="background:{g_col}">{grade} · 안전도 {round(s)}점</span>
                 </div>
                 <div class="stat-grid">
                     <div class="stat-box">
