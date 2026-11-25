@@ -157,9 +157,9 @@ def tick_axis(fig, lo, hi, axis="y"):
     if axis == "y": fig.update_yaxes(**kw)
     else: fig.update_xaxes(**kw)
 
-def style(fig, h=310, t=26, l=12, r=16):
+def style(fig, h=310, t=26, l=12, r=16, b=14):
     fig.update_layout(
-        height=h, margin=dict(l=l, r=r, t=t, b=14), paper_bgcolor="#fff", plot_bgcolor="#fff",
+        height=h, margin=dict(l=l, r=r, t=t, b=b), paper_bgcolor="#fff", plot_bgcolor="#fff",
         font=dict(family=FONT, size=12, color="#1d1d1f"),
         legend=dict(orientation="h", y=1.12, x=0, font=dict(size=11)),
         hoverlabel=dict(font_family=FONT, bgcolor="white")
@@ -303,20 +303,20 @@ div[data-testid="stPlotlyChart"]:hover{box-shadow:0 14px 34px rgba(60,90,140,.16
 .diag-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:8px;background:#eef3ff;color:#2b5fc7}
 .diag-badge.user{background:#f2f4f8;color:#4b5563}
 .diag-code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:14px;font-weight:800;background:#f5f7fa;color:#1d1d1f;padding:3px 11px;border-radius:8px;border:1px solid #dce2ec;letter-spacing:.03em}
-.res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:458px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
+.res-card{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 2px 14px rgba(0,0,0,.05);animation:up .6s both;min-height:460px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box}
 .res-hdr{font-size:16.5px;font-weight:800;color:#1d1d1f;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .grade-pill{font-size:12.5px;font-weight:800;padding:4px 12px;border-radius:99px;color:#fff!important}
-.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
-.stat-box{background:#f5f7fa;border-radius:15px;padding:13px 15px;border:1px solid #e8ecf2}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.stat-box{background:#f5f7fa;border-radius:15px;padding:12px 14px;border:1px solid #e8ecf2}
 .stat-lbl{font-size:12px;font-weight:600;color:#6e6e73;margin-bottom:4px}
-.stat-val{font-size:22px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-val{font-size:21px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat-sub{font-size:11.5px;color:#5b6472;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hibp-bar{border-radius:12px;padding:9px 14px;margin-bottom:8px;font-size:12.8px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hibp-bar{border-radius:12px;padding:9px 13px;margin-bottom:8px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .hibp-bad{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}
 .hibp-ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}
 .hibp-na{background:#f5f7fa;color:#5b6472;border:1px solid #e2e6ee}
-.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
-.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}.na{background:#f2f4f8;color:#5b6472;border:1px solid #e2e6ee}
+.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:8px}
+.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 5px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#e6f7ed;color:#157332;border:1px solid #c6ebd4}.no{background:#ffeceb;color:#c92a20;border:1px solid #ffd1ce}.na{background:#f2f4f8;color:#5b6472;border:1px solid #e2e6ee}
 
 /* 탭 2 비밀번호 해킹 수법 설명 카드 */
 .atk-card{background:#fff;border-radius:22px;padding:14px 16px;box-shadow:0 2px 14px rgba(0,0,0,.05);min-height:310px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;gap:8px;animation:up .6s both}
@@ -344,9 +344,22 @@ span[data-baseweb="tag"]{background:#5b8def!important;border-radius:8px}[role="s
 
 html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stCheckbox"] label *,[data-testid="stToggle"] label *{color:#1d1d1f!important}.sec .t{color:#1d1d1f}.sec .k{color:#5b6472}div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#e6e9f2!important}div.ig,div.ig *{color:#fff!important}
 
-.st-key-chk_panel,.st-key-wi_panel{background:#fff;border-radius:18px;padding:10px 15px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-.st-key-chk_panel [data-testid="stHorizontalBlock"],.st-key-wi_panel [data-testid="stHorizontalBlock"]{align-items:center!important}
-.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button,.st-key-d_ex3 button{width:100%;min-height:42px;padding:0 8px!important;border-radius:13px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap}
+/* 입력 바 & 조건 변경 실험 바 1픽셀 수직 정중앙 정렬 */
+.st-key-chk_panel,.st-key-wi_panel{background:#fff;border-radius:18px;padding:10px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.st-key-chk_panel [data-testid="stHorizontalBlock"],.st-key-wi_panel [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:42px}
+.st-key-chk_panel [data-testid="stColumn"],.st-key-wi_panel [data-testid="stColumn"]{display:flex!important;align-items:center!important}
+.st-key-chk_panel [data-testid="stForm"]{margin:0!important;padding:0!important;border:0!important;width:100%!important}
+.st-key-chk_panel [data-testid="stElementContainer"],.st-key-chk_panel [data-testid="stButton"]{margin:0!important;padding:0!important}
+
+.st-key-wi_panel [data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-wi_panel [data-testid="stColumn"] [data-testid="stVerticalBlock"]{width:100%!important;gap:0!important;justify-content:center!important}
+.st-key-wi_panel [data-testid="stElementContainer"],
+.st-key-wi_panel [data-testid="stMarkdownContainer"],
+.st-key-wi_panel [data-testid="stButton"]{margin:0!important;padding:0!important;display:flex!important;align-items:center!important;width:100%!important}
+.st-key-wi_panel [data-testid="stMarkdownContainer"] p{margin:0!important;padding:0!important;line-height:42px!important}
+.wi-lbl{font-size:13.5px;font-weight:800;color:#1d1d1f;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:42px;line-height:42px;margin:0;padding:0}
+
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button,.st-key-d_ex3 button{width:100%;height:42px!important;min-height:42px!important;margin:0!important;padding:0 8px!important;border-radius:13px;border:0;box-shadow:0 4px 12px rgba(60,90,140,.16);transition:transform .2s,box-shadow .2s;white-space:nowrap;display:inline-flex!important;align-items:center!important;justify-content:center!important}
 .st-key-d_ex0 button{background:linear-gradient(135deg,#f0554a,#ff8f7a)}
 .st-key-d_ex1 button{background:linear-gradient(135deg,#e8860a,#ffb347)}
 .st-key-d_ex2 button{background:linear-gradient(135deg,#4f7fe6,#7aa7ff)}
@@ -354,13 +367,13 @@ html{color-scheme:light}[data-testid="stMarkdownContainer"] p,[data-testid="stMa
 .st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover,.st-key-d_ex3 button:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,90,140,.24)}
 .st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *,.st-key-d_ex3 button *{color:#fff!important;font-size:12.3px;font-weight:700}
 
-.st-key-wi_panel button{min-height:40px!important;border-radius:12px!important;font-weight:700!important;font-size:12.8px!important;transition:all .2s}
+.st-key-wi_panel button{width:100%!important;height:42px!important;min-height:42px!important;margin:0!important;padding:0 12px!important;border-radius:12px!important;font-weight:700!important;font-size:12.8px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;transition:all .2s}
 .st-key-wi_panel button[kind="primary"]{background:#5b8def!important;border:1px solid #4a7de0!important;box-shadow:0 4px 14px rgba(91,141,239,.35)!important}
 .st-key-wi_panel button[kind="primary"],.st-key-wi_panel button[kind="primary"] *,.st-key-wi_panel button[kind="primary"] p{color:#fff!important;font-weight:800!important}
 .st-key-wi_panel button[kind="secondary"]{background:#f4f6fb!important;border:1px solid #dce3ef!important}
 .st-key-wi_panel button[kind="secondary"] *{color:#1d1d1f!important;font-weight:700!important}
 
-[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:13px;min-height:42px;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700;font-size:13px}[data-testid="stForm"] input{border-radius:13px;min-height:42px}[data-testid="InputInstructions"]{display:none!important}</style>""", False)
+[data-testid="stForm"] button{background:#5b8def;border:0;border-radius:13px;height:42px!important;min-height:42px!important;width:100%;margin:0!important}[data-testid="stForm"] button *{color:#fff!important;font-weight:700;font-size:13px}[data-testid="stForm"] input{border-radius:13px;min-height:42px}[data-testid="InputInstructions"]{display:none!important}</style>""", False)
 
 if not st.session_state.get("splash"):
     st.session_state["splash"] = True
@@ -530,8 +543,8 @@ def p_lab():
     leaked = hibp_cnt is not None and hibp_cnt > 0
 
     with st.container(key="wi_panel"):
-        wc = st.columns([2.2, 1.9, 1.95, 1.95, 2.0], vertical_alignment="center")
-        wc[0].markdown('<div style="font-size:13.2px;font-weight:800;color:#1d1d1f">🧪 조건 변경 실험 (What-If)</div>', unsafe_allow_html=True)
+        wc = st.columns([2.2, 1.95, 1.95, 1.95, 1.95], vertical_alignment="center")
+        wc[0].markdown('<div class="wi-lbl">🧪 조건 변경 실험 (What-If)</div>', unsafe_allow_html=True)
         wi_opts = [
             ("base", "현재 입력값"),
             ("sp1", "+ 특수문자 1개"),
@@ -566,8 +579,39 @@ def p_lab():
             f'</div>'
         )
 
-    c1, c2 = st.columns([5.2, 4.8])
+    s = act_sc["score"]
+    grade, g_col = ("위험", RED) if s < 30 else ("주의", ORANGE) if s < 55 else ("양호", BLUE) if s < 80 else ("안전", GREEN)
+    if wi_key == "base" and (base_sc["common"] or leaked):
+        grade, g_col = "위험", RED
+
+    c1, c2, c3 = st.columns([2.6, 3.7, 3.7])
     with c1:
+        fig_g = go.Figure(go.Indicator(
+            mode="gauge+number", value=round(s),
+            number=dict(suffix="점", font=dict(size=36)),
+            title=dict(text=f"진단 등급: {grade}", font=dict(size=15.5, color="#1d1d1f")),
+            gauge=dict(
+                axis=dict(range=[0, 100]), bar=dict(color=g_col, thickness=.35), bgcolor="#f2f2f5", borderwidth=0,
+                steps=[
+                    dict(range=[0, 30], color="#ffe9e7"),
+                    dict(range=[30, 55], color="#fff2dc"),
+                    dict(range=[55, 80], color="#e5f1ff"),
+                    dict(range=[80, 100], color="#e3f8e9")
+                ]
+            )
+        ))
+        show(style(fig_g, 236, t=52, l=22, r=24, b=12), f"d_g_{wi_key}_{round(s)}_{act_sc['L']}")
+
+        vf = go.Figure([go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard") for g_ in ORDER])
+        if wi_key != "base" and act_sc["L"] != base_sc["L"]:
+            vf.add_vline(x=base_sc["L"], line_color=GRAY, line_dash="dot", annotation_text=f"기존 {base_sc['L']}자", annotation_position="bottom left")
+            vf.add_vline(x=act_sc["L"], line_color=BLUE, line_width=2.5, annotation_text=f"변경 {act_sc['L']}자", annotation_position="top right")
+        else:
+            vf.add_vline(x=act_sc["L"], line_color="#1d1d1f", line_dash="dash", line_width=2, annotation_text=f"내 길이 {act_sc['L']}자")
+        vf.update_xaxes(title="표본 등급별 길이 분포(자)")
+        show(style(vf, 216, t=22, l=10, r=18, b=14), f"d_vf_{wi_key}_{act_sc['L']}")
+
+    with c2:
         order_keys = ["base", "sp1", "len4", "both"]
         y_lbls = [f"{scs[k]['short']} ({scs[k]['L']}자)" for k in order_keys]
         secs = [scs[k]["sec"] for k in order_keys]
@@ -587,33 +631,22 @@ def p_lab():
             hovertemplate="%{y}: %{text}<extra></extra>"
         ))
         fig_wi.add_vline(x=math.log10(YR) + 3.2, line_dash="dot", line_color="#1d1d1f", line_width=1.8, annotation_text="기준 1년", annotation_position="top")
-        fig_wi.update_layout(title=dict(text="<b>조건별 예상 버팀 시간 비교</b>", font=dict(size=13.5, color="#1d1d1f"), x=0.02, y=0.95))
+        fig_wi.update_layout(
+            title=dict(text="<b>조건별 예상 버팀 시간 비교</b>", font=dict(size=15, color="#1d1d1f"), x=0.03, y=0.95),
+            bargap=0.42
+        )
         fig_wi.update_xaxes(
+            title="무차별 대입 기준 예상 버팀 시간",
             tickvals=[p[0] for p in t_pairs],
             ticktext=[p[1] for p in t_pairs],
-            range=[0, max(max(l_vals) + 3.2, math.log10(YR) + 3.2) + 4.5]
+            range=[0, max(max(l_vals) + 3.2, math.log10(YR) + 3.2) + 5.2]
         )
         fig_wi.update_yaxes(autorange="reversed", showgrid=False)
-        show(style(fig_wi, 236, t=42, l=10, r=24), f"d_wi_{wi_key}_{act_sc['L']}")
+        show(style(fig_wi, 460, t=52, l=12, r=28, b=20), f"d_wi_{wi_key}_{act_sc['L']}")
 
-        vf = go.Figure([go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard") for g_ in ORDER])
-        if wi_key != "base" and act_sc["L"] != base_sc["L"]:
-            vf.add_vline(x=base_sc["L"], line_color=GRAY, line_dash="dot", annotation_text=f"기존 {base_sc['L']}자", annotation_position="bottom left")
-            vf.add_vline(x=act_sc["L"], line_color=BLUE, line_width=2.5, annotation_text=f"변경 {act_sc['L']}자", annotation_position="top right")
-        else:
-            vf.add_vline(x=act_sc["L"], line_color="#1d1d1f", line_dash="dash", line_width=2, annotation_text=f"내 길이 {act_sc['L']}자")
-        vf.update_layout(title=dict(text="<b>25,000건 표본 등급별 길이 분포</b>", font=dict(size=13.5, color="#1d1d1f"), x=0.02, y=0.94))
-        vf.update_xaxes(title="비밀번호 길이(자)")
-        show(style(vf, 214, t=38, l=10, r=18), f"d_vf_{wi_key}_{act_sc['L']}")
-
-    with c2:
-        s = act_sc["score"]
-        grade, g_col = ("위험", RED) if s < 30 else ("주의", ORANGE) if s < 55 else ("양호", BLUE) if s < 80 else ("안전", GREEN)
-        if wi_key == "base" and (base_sc["common"] or leaked):
-            grade, g_col = "위험", RED
-
+    with c3:
         if base_sc["common"]:
-            common_html = '<div class="hibp-bar hibp-bad"><span>📋 상위 500개 흔한 목록</span><span>포함됨 · 사전 공격 시 즉시 해독</span></div>'
+            common_html = '<div class="hibp-bar hibp-bad"><span>📋 상위 500개 흔한 목록</span><span>포함됨 · 즉시 해독</span></div>'
             common_chip = ("흔한 목록 아님", False)
         else:
             common_html = '<div class="hibp-bar hibp-ok"><span>📋 상위 500개 흔한 목록</span><span>해당 없음</span></div>'
@@ -623,10 +656,10 @@ def p_lab():
             hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 HIBP 실제 유출 조회</span><span>조회 실패 · 확인 불가</span></div>'
             hibp_chip = ("유출 확인 불가", None)
         elif hibp_cnt > 0:
-            hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 HIBP 실제 유출 조회 (원본)</span><span>전 세계 {hibp_cnt:,}회 유출</span></div>'
+            hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 HIBP 유출 조회 (원본)</span><span>{hibp_cnt:,}회 유출</span></div>'
             hibp_chip = ("유출 이력 있음", False)
         else:
-            hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ HIBP 실제 유출 조회 (원본)</span><span>0회 (유출 기록 없음)</span></div>'
+            hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ HIBP 유출 조회 (원본)</span><span>0회 (기록 없음)</span></div>'
             hibp_chip = ("유출 이력 없음", True)
 
         chips = [
@@ -638,7 +671,7 @@ def p_lab():
             f'<div class="chip {"na" if v is None else "ok" if v else "no"}">{"–" if v is None else "✓" if v else "✕"} {k}</div>'
             for k, v in chips
         )
-        time_sub = "흔한 목록 포함 → 사전 공격 시 즉시" if act_sc["common"] else "조합 대입 + 패턴 보정 예측치"
+        time_sub = "흔한 목록 → 사전 공격 시 즉시" if act_sc["common"] else "조합 대입 + 패턴 보정 예측치"
 
         md(f"""<div class="res-card">
             <div>
