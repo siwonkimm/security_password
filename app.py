@@ -1,6 +1,6 @@
 import hashlib, html as _html, inspect, math, re, urllib.request
 from pathlib import Path
-import numpy as np, pandas as pd, plotly.graph_objects as go, plotly.express as px, streamlit as st
+import numpy as np, pandas as pd, plotly.graph_objects as go, streamlit as st
 from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestRegressor
 
@@ -158,7 +158,6 @@ def sup(n):
     return str(int(n)).translate(str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁻"))
 
 def human(s):
-    """누구나 직관적으로 읽을 수 있는 자연스러운 한국어 시간 표기 (밀리초·지수 표기 제거)"""
     if s is None or not np.isfinite(s):
         return "측정 불가"
     if s < 0.01:
@@ -176,7 +175,6 @@ def human(s):
     return "1억 년 이상"
 
 def axis_human(s):
-    """차트 축 눈금용 짧은 시간 표기"""
     if s < 0.05:
         return "0.01초"
     if s < 1:
@@ -196,7 +194,6 @@ def axis_human(s):
     return f"10{sup(round(math.log10(y)))}년"
 
 def rank_text(pct: float) -> str:
-    """상위/하위 혼동 없이 바로 이해되는 상대 순위 표기"""
     top = max(0.1, 100.0 - pct)
     if top <= 50.0:
         return f"상위 {top:.0f}%" if top >= 1 else f"상위 {top:.1f}%"
@@ -220,26 +217,61 @@ def combo_label(feats_or_sc: dict) -> str:
 def tick_axis(fig, lo, hi, axis="y"):
     lo, hi = float(lo), float(hi)
     span = max(hi - lo, 1.0)
+    min_gap = span / 4.2 if axis == "x" else span / 5.2
     keep = []
     for v in CAND:
         x = math.log10(v)
-        if lo - 0.35 <= x <= hi + 0.35 and (not keep or x - keep[-1] >= span / 5.5):
+        if lo - 0.35 <= x <= hi + 0.35 and (not keep or x - keep[-1] >= min_gap):
             keep.append(x)
-    kw = dict(tickvals=keep, ticktext=[axis_human(10 ** x) for x in keep], range=[lo - 0.45, hi + 0.45], tickangle=0)
+    pad_hi = 0.75 if axis == "x" else 0.55
+    kw = dict(tickvals=keep, ticktext=[axis_human(10 ** x) for x in keep], range=[lo - 0.5, hi + pad_hi], tickangle=0)
     if axis == "y":
         fig.update_yaxes(**kw)
     else:
         fig.update_xaxes(**kw)
 
-def style(fig, h=300, t=20, l=12, r=18, b=12):
+def apply_hbar_time_axis(fig, secs, ref_sec, ref_text, x_title=""):
+    """가로 막대 차트 공통 축: 오른쪽 라벨 잘림 방지 + 눈금 대각선 회전(겹침) 완벽 방지"""
+    SHIFT = 3.2
+    CAP_LOG = math.log10(YR * 1e8) + 0.25  # '1억 년 이상' 표기 상한에 맞춘 막대 길이
+    x_bars = [float(np.clip(math.log10(max(v, 1e-3)), -3.0, CAP_LOG)) + SHIFT for v in secs]
+    ref_x = float(np.clip(math.log10(max(ref_sec, 1e-3)), -3.0, CAP_LOG)) + SHIFT
+    max_x = max(max(x_bars), ref_x)
+
+    ticks = [(1.2, "0.01초"), (4.98, "1분"), (10.70, "1년")]
+    if max_x >= 12.2:
+        ticks.append((14.70, "1만 년"))
+    if max_x >= 16.2:
+        ticks.append((18.70, "1억 년"))
+
+    # 막대 우측 텍스트('1억 년 이상' 등)가 절대 잘리지 않도록 약 36% 이상의 여유 공간 확보
+    x_hi = max(max_x * 1.36 + 2.4, 16.5)
+
+    fig.add_vline(x=ref_x, line_dash="dot", line_color="#0f172a", line_width=1.8)
+    fig.add_annotation(
+        x=ref_x, y=1.06, xref="x", yref="paper",
+        text=f"<b>{ref_text}</b>", showarrow=False,
+        font=dict(family=FONT, size=12, color="#0f172a"),
+        bgcolor="rgba(255,255,255,0.9)"
+    )
+    fig.update_xaxes(
+        title=x_title,
+        tickvals=[p[0] for p in ticks],
+        ticktext=[p[1] for p in ticks],
+        tickangle=0,
+        range=[0, x_hi]
+    )
+    return x_bars
+
+def style(fig, h=320, t=34, l=18, r=26, b=44):
     fig.update_layout(
         height=h, margin=dict(l=l, r=r, t=t, b=b), paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
         font=dict(family=FONT, size=12.5, color="#1e293b"),
-        legend=dict(orientation="h", y=1.12, x=0, font=dict(size=12)),
+        legend=dict(orientation="h", y=1.14, x=0, font=dict(size=12)),
         hoverlabel=dict(font_family=FONT, bgcolor="white", font_size=12.5)
     )
-    fig.update_xaxes(gridcolor="#eef2f6", zeroline=False, showline=False, automargin=True)
-    fig.update_yaxes(gridcolor="#eef2f6", zeroline=False, showline=False, automargin=True)
+    fig.update_xaxes(gridcolor="#eef2f6", zeroline=False, showline=False, automargin=True, title_standoff=10)
+    fig.update_yaxes(gridcolor="#eef2f6", zeroline=False, showline=False, automargin=True, title_standoff=8)
     return fig
 
 _PW = "width" in inspect.signature(st.plotly_chart).parameters
@@ -247,11 +279,10 @@ def show(fig, key):
     st.plotly_chart(fig, config={"displayModeBar": False}, key=key, **(dict(width="stretch") if _PW else dict(use_container_width=True)))
 
 def card_head(title: str, sub: str, table_fn=None):
-    """흰색 통합 카드 내부 상단 제목 + 쉬운 1줄 설명"""
     if table_fn is None:
         md(f'<div class="ch"><div class="ct">{title}</div><div class="cs">{sub}</div></div>')
     else:
-        c1, c2 = st.columns([8.0, 2.0], vertical_alignment="top")
+        c1, c2 = st.columns([7.3, 2.7], vertical_alignment="top")
         with c1:
             md(f'<div class="ch" style="margin-bottom:2px"><div class="ct">{title}</div></div>')
         with c2:
@@ -260,7 +291,6 @@ def card_head(title: str, sub: str, table_fn=None):
         md(f'<div class="ch"><div class="cs" style="margin-top:0">{sub}</div></div>')
 
 def summary_cards(items):
-    """답답한 원색 블록을 대체하는 깔끔한 화이트 요약 카드 4개"""
     bgs = [("#eff6ff", "#2563eb"), ("#fef2f2", "#dc2626"), ("#fffbeb", "#d97706"), ("#ecfdf5", "#059669")]
     html_cards = []
     for i, (icon, label, val, desc) in enumerate(items):
@@ -339,58 +369,64 @@ html,body,[class*="css"],.stApp{font-family:Pretendard,-apple-system,'Apple SD G
 .stApp{background:#f4f6fa}#MainMenu,footer{visibility:hidden}[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"]{display:none!important}
 [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none}
 
-/* 전체 여백 대폭 확대 (답답함 해소) */
-.block-container{max-width:1460px;width:100%;box-sizing:border-box;padding:1.4rem 2.2rem 2.8rem;position:relative;z-index:1;animation:up .45s ease both}
-.block-container>[data-testid="stVerticalBlock"]{gap:1.15rem!important}
+/* 전체 레이아웃 여백 확보 */
+.block-container{max-width:1460px;width:100%;box-sizing:border-box;padding:1.4rem 2.2rem 3rem;position:relative;z-index:1;animation:up .45s ease both}
+.block-container>[data-testid="stVerticalBlock"]{gap:1.25rem!important}
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
-/* 상단 네비게이션 헤더 */
+/* 상단 네비게이션 헤더 (잘림 방지) */
 .st-key-hdr{background:linear-gradient(100deg,#111827,#1e293b);border-radius:22px;padding:12px 22px;border:1px solid #334155;box-shadow:0 8px 24px rgba(15,23,42,.12)}
 .st-key-hdr [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:46px}
 .st-key-hdr [data-testid="stColumn"]{display:flex!important;align-items:center!important}
 .st-key-hdr [data-testid="stElementContainer"],.st-key-hdr [data-testid="stMarkdownContainer"],.st-key-hdr [data-testid="stButton"],.st-key-hdr [data-testid="stButtonGroup"]{margin:0!important;padding:0!important;display:flex!important;align-items:center!important}
 .st-key-hdr [data-testid="stMarkdownContainer"] p{margin:0!important;padding:0!important;line-height:46px!important}
 div.st-key-hdr,div.st-key-hdr *,div.st-key-hdr p,div.st-key-hdr button *{color:#f8fafc!important}
-.ht{font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;height:46px;line-height:46px}
-.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:nowrap;gap:8px;height:46px}
-.st-key-hdr [data-testid="stButtonGroup"] button{height:44px!important;min-height:44px!important;padding:0 16px!important;font-size:14.2px;font-weight:700;border-radius:13px;background:#1e293b;border:1px solid #334155;white-space:nowrap;transition:all .2s;display:inline-flex;align-items:center;justify-content:center}
+.ht{font-size:18.5px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;height:46px;line-height:46px}
+.st-key-hdr [data-testid="stButtonGroup"]{flex-wrap:wrap;gap:8px;min-height:44px}
+.st-key-hdr [data-testid="stButtonGroup"] button{height:44px!important;min-height:44px!important;padding:0 16px!important;font-size:14px;font-weight:700;border-radius:13px;background:#1e293b;border:1px solid #334155;white-space:nowrap;transition:all .2s;display:inline-flex;align-items:center;justify-content:center}
 .st-key-hdr [data-testid="stButtonGroup"] button:hover{border-color:#60a5fa;transform:translateY(-1px)}
 .st-key-hdr [data-testid="stButtonGroup"] button[aria-checked="true"],.st-key-hdr [data-testid="stButtonGroup"] button[aria-pressed="true"],.st-key-hdr button[data-testid="stBaseButton-segmented_controlActive"]{background:#3b82f6!important;border-color:#93c5fd!important;box-shadow:0 4px 14px rgba(59,130,246,.45)}
-.st-key-hdr button[kind="secondary"]{background:#1e293b;border:1px solid #334155;border-radius:13px;height:44px!important;min-height:44px!important;padding:0 14px!important}
+.st-key-hdr button[kind="secondary"]{background:#1e293b;border:1px solid #334155;border-radius:13px;height:44px!important;min-height:44px!important;padding:0 14px!important;white-space:nowrap}
 
-/* 통합 화이트 카드 (제목 + 설명 + 차트가 한 카드 안에서 여유 있게 배치됨) */
-div[class*="st-key-ucard_"]{background:#ffffff;border-radius:22px;padding:22px 24px 18px!important;border:1px solid #e5e9f2;box-shadow:0 4px 20px rgba(15,23,42,.035)}
-div[class*="st-key-ucard_"] div[data-testid="stPlotlyChart"]{box-shadow:none!important;border-radius:12px;background:#fff}
+/* 통합 화이트 카드 (상하좌우 충분한 안쪽 여백) */
+div[class*="st-key-ucard_"]{background:#ffffff;border-radius:22px;padding:24px 26px 26px!important;border:1px solid #e5e9f2;box-shadow:0 4px 20px rgba(15,23,42,.035);box-sizing:border-box}
+div[class*="st-key-ucard_"] div[data-testid="stPlotlyChart"]{box-shadow:none!important;border-radius:12px;background:#fff;overflow:visible!important}
+
+/* 1번 탭 하단 3개 카드 높이 정확히 일치 */
+div.st-key-ucard_t1_gauge,div.st-key-ucard_t1_wi,div.st-key-ucard_t1_res{min-height:536px!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important}
 
 /* 페이지 상단 질문 배너 */
-.pbanner{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:4px 2px 2px}
-.pstep{display:inline-block;font-size:12px;font-weight:800;color:#2563eb;background:#dbeafe;padding:4px 10px;border-radius:99px;margin-bottom:8px}
-.ptitle{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.025em;line-height:1.3}
-.psub{font-size:14px;color:#475569;margin-top:6px;line-height:1.55;word-break:keep-all}
+.pbanner{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:4px 2px}
+.pstep{display:inline-block;font-size:12px;font-weight:800;color:#2563eb;background:#dbeafe;padding:4px 11px;border-radius:99px;margin-bottom:8px}
+.ptitle{font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.025em;line-height:1.32}
+.psub{font-size:14px;color:#475569;margin-top:6px;line-height:1.58;word-break:keep-all}
 .sync-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:12px;white-space:nowrap}
 
-/* 카드 내부 헤더 */
-.ch{margin-bottom:10px}
+/* 카드 내부 헤더 및 구분선 */
+.ch{margin-bottom:8px}
 .ct{font-size:16.5px;font-weight:800;color:#0f172a;letter-spacing:-.02em;line-height:1.35}
-.cs{font-size:13px;color:#64748b;margin-top:4px;line-height:1.5;word-break:keep-all}
+.cs{font-size:13px;color:#64748b;margin-top:4px;line-height:1.52;word-break:keep-all}
+.sub-div{border:0;border-top:1px solid #eef2f6;margin:8px 0 10px}
+.mini-ttl{font-size:13.5px;font-weight:800;color:#334155;margin-bottom:2px}
+.flt-lbl{font-size:14px;font-weight:600;color:#0f172a;margin-bottom:8px;line-height:1.4}
 
-/* 화이트 요약 KPI 카드 4개 */
+/* 화이트 요약 KPI 카드 4개 (텍스트 잘림 방지 반응형) */
 .sgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.scard{background:#ffffff;border-radius:20px;padding:18px 20px;border:1px solid #e5e9f2;box-shadow:0 4px 18px rgba(15,23,42,.035);display:flex;align-items:center;gap:15px;min-width:0}
-.sicon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:23px;flex:none}
+.scard{background:#ffffff;border-radius:20px;padding:18px 20px;border:1px solid #e5e9f2;box-shadow:0 4px 18px rgba(15,23,42,.035);display:flex;align-items:center;gap:14px;min-width:0}
+.sicon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
 .sbody{min-width:0;flex:1}
 .slbl{font-size:12.5px;font-weight:700;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sval{font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-.02em;margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sdsc{font-size:11.8px;color:#64748b;margin-top:4px;line-height:1.35;word-break:keep-all}
+.sval{font-size:21.5px;font-weight:800;color:#0f172a;letter-spacing:-.02em;margin-top:3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sdsc{font-size:12px;color:#64748b;margin-top:4px;line-height:1.4;word-break:keep-all}
 
 /* 1번 탭: 내 비밀번호 구성 조건 숫자 표시 바 */
-.cond-wrap{background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.pw-chip-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pw-tag{font-size:12px;font-weight:800;padding:5px 10px;border-radius:8px;background:#dbeafe;color:#1d4ed8}
+.cond-wrap{background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px 18px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.pw-chip-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.pw-tag{font-size:12px;font-weight:800;padding:5px 10px;border-radius:8px;background:#dbeafe;color:#1d4ed8;white-space:nowrap}
 .pw-tag.direct{background:#e0e7ff;color:#3730a3}
-.pw-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;font-weight:800;color:#0f172a;background:#fff;padding:5px 13px;border-radius:9px;border:1px solid #cbd5e1;letter-spacing:.03em}
+.pw-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14.5px;font-weight:800;color:#0f172a;background:#fff;padding:5px 13px;border-radius:9px;border:1px solid #cbd5e1;letter-spacing:.02em;word-break:break-all}
 .cond-pills{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cpill{background:#ffffff;border:1px solid #dce3ee;border-radius:10px;padding:6px 11px;font-size:12.5px;font-weight:700;color:#334155;display:inline-flex;align-items:center;gap:5px}
+.cpill{background:#ffffff;border:1px solid #dce3ee;border-radius:10px;padding:6px 11px;font-size:12.5px;font-weight:700;color:#334155;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .cpill b{color:#0f172a;font-size:13.5px;font-weight:800}
 .cpill.up-chg{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
 .cpill.up-chg b{color:#1d4ed8}
@@ -398,66 +434,75 @@ div[class*="st-key-ucard_"] div[data-testid="stPlotlyChart"]{box-shadow:none!imp
 .cpill.ok-p{background:#ecfdf5;border-color:#a7f3d0;color:#059669}
 
 /* 입력 바 & What-If 버튼 수평·높이 정렬 */
-.st-key-ucard_t1_ctrl [data-testid="stForm"]{margin:0!important;padding:0!important;border:0!important}
+.st-key-pw_row [data-testid="stHorizontalBlock"],.st-key-wi_bar [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:42px}
 .wi-row-lbl{font-size:13.5px;font-weight:800;color:#0f172a;white-space:nowrap;height:42px;line-height:42px;display:inline-flex;align-items:center;gap:6px}
-.st-key-wi_bar [data-testid="stHorizontalBlock"]{align-items:center!important;min-height:42px}
 .st-key-wi_bar [data-testid="stColumn"],.st-key-wi_bar [data-testid="stElementContainer"],.st-key-wi_bar [data-testid="stMarkdownContainer"],.st-key-wi_bar [data-testid="stButton"]{display:flex!important;align-items:center!important;margin:0!important;padding:0!important;width:100%!important}
-.st-key-wi_bar button{width:100%!important;height:42px!important;min-height:42px!important;border-radius:12px!important;font-size:13px!important;font-weight:700!important;transition:all .2s}
+.st-key-wi_bar button{width:100%!important;height:42px!important;min-height:42px!important;border-radius:12px!important;font-size:13px!important;font-weight:700!important;white-space:nowrap;padding:0 10px!important;transition:all .2s}
 .st-key-wi_bar button[kind="primary"]{background:#3b82f6!important;border:1px solid #2563eb!important;box-shadow:0 4px 12px rgba(59,130,246,.3)!important}
 .st-key-wi_bar button[kind="primary"],.st-key-wi_bar button[kind="primary"] *{color:#ffffff!important;font-weight:800!important}
 .st-key-wi_bar button[kind="secondary"]{background:#f8fafc!important;border:1px solid #cbd5e1!important}
 .st-key-wi_bar button[kind="secondary"] *{color:#1e293b!important;font-weight:700!important}
 
-.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button,.st-key-d_ex3 button{width:100%;height:42px!important;min-height:42px!important;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;transition:all .18s;white-space:nowrap}
+.st-key-pw_submit button{width:100%!important;height:42px!important;min-height:42px!important;border-radius:12px!important;background:#2563eb!important;border:0!important;white-space:nowrap}
+.st-key-pw_submit button *{color:#fff!important;font-weight:700!important;font-size:13.5px!important}
+.st-key-pw_row input{border-radius:12px!important;min-height:42px!important}
+[data-testid="InputInstructions"]{display:none!important}
+
+.st-key-d_ex0 button,.st-key-d_ex1 button,.st-key-d_ex2 button,.st-key-d_ex3 button{width:100%;height:42px!important;min-height:42px!important;padding:0 8px!important;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;transition:all .18s;white-space:nowrap}
 .st-key-d_ex0 button:hover,.st-key-d_ex1 button:hover,.st-key-d_ex2 button:hover,.st-key-d_ex3 button:hover{background:#eff6ff;border-color:#93c5fd;transform:translateY(-1px)}
 .st-key-d_ex0 button *,.st-key-d_ex1 button *,.st-key-d_ex2 button *,.st-key-d_ex3 button *{color:#1e293b!important;font-size:12.5px;font-weight:700}
 
-[data-testid="stForm"] button{background:#2563eb;border:0;border-radius:12px;height:42px!important;min-height:42px!important;width:100%}[data-testid="stForm"] button *{color:#fff!important;font-weight:700;font-size:13.5px}[data-testid="stForm"] input{border-radius:12px;min-height:42px}[data-testid="InputInstructions"]{display:none!important}
-
-/* 1번 탭 우측 세부 진단 카드 내부 */
-.grade-pill{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:99px;color:#fff!important}
-.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0 12px}
-.stat-box{background:#f8fafc;border-radius:15px;padding:13px 15px;border:1px solid #e2e8f0}
+/* 1번 탭 우측 세부 진단 카드 내부 (하단 여유 확보) */
+.res-inner{min-height:482px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;padding-bottom:4px}
+.grade-pill{font-size:12.5px;font-weight:800;padding:5px 13px;border-radius:99px;color:#fff!important;white-space:nowrap;line-height:1.2}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.stat-box{background:#f8fafc;border-radius:15px;padding:14px 16px;border:1px solid #e2e8f0;min-width:0}
 .stat-lbl{font-size:12px;font-weight:700;color:#64748b;margin-bottom:4px}
 .stat-val{font-size:21px;font-weight:800;color:#0f172a;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-sub{font-size:11.5px;color:#64748b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hibp-bar{border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:12.8px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.stat-sub{font-size:11.5px;color:#64748b;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hibp-bar{border-radius:12px;padding:10px 14px;margin-bottom:9px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .hibp-bad{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
 .hibp-ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
 .hibp-na{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
-.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
-.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8.5px 6px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap}.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}.no{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}.na{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+.chk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:8px}
+.chip{display:flex;align-items:center;justify-content:center;border-radius:10px;padding:9.5px 6px;font-size:12px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}.no{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}.na{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
 
-/* 2번 탭 하단: 해커의 4단계 공격 순서 (가로 4열 카드) */
-.atk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:6px}
-.atk-step{background:#f8fafc;border:1px solid #e2e8f0;border-top:4px solid #3b82f6;border-radius:16px;padding:16px 16px 15px;display:flex;flex-direction:column;gap:8px}
+/* 2번 탭 하단: 해커의 4단계 공격 순서 */
+.atk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:8px}
+.atk-step{background:#f8fafc;border:1px solid #e2e8f0;border-top:4px solid #3b82f6;border-radius:16px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px}
 .atk-step.s1{border-top-color:#ef4444;background:#fffafa}
 .atk-step.s2{border-top-color:#f59e0b;background:#fffdf7}
 .atk-step.s3{border-top-color:#3b82f6}
 .atk-step.s4{border-top-color:#10b981;background:#f7fdf9}
-.atk-badge{display:inline-flex;align-items:center;justify-content:space-between;gap:6px}
-.atk-num{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:#e2e8f0;color:#1e293b}
+.atk-badge{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.atk-num{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:#e2e8f0;color:#1e293b;white-space:nowrap}
 .atk-step.s1 .atk-num{background:#fee2e2;color:#b91c1c}
 .atk-step.s2 .atk-num{background:#fef3c7;color:#b45309}
 .atk-step.s3 .atk-num{background:#dbeafe;color:#1d4ed8}
 .atk-step.s4 .atk-num{background:#d1fae5;color:#047857}
-.atk-tech{font-size:11.5px;font-weight:700;color:#64748b}
+.atk-tech{font-size:11.5px;font-weight:700;color:#64748b;white-space:nowrap}
 .atk-ttl{font-size:15px;font-weight:800;color:#0f172a;line-height:1.35;word-break:keep-all}
-.atk-txt{font-size:12.8px;color:#475569;line-height:1.55;word-break:keep-all}
+.atk-txt{font-size:13px;color:#475569;line-height:1.58;word-break:keep-all}
 
 /* 4번 탭 타일 지도 */
-.tg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;height:315px;overflow-y:auto;padding:4px 4px 4px 0;box-sizing:border-box;align-content:start}
+.tg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;height:335px;overflow-y:auto;padding:4px 6px 4px 0;box-sizing:border-box;align-content:start}
 .tg::-webkit-scrollbar{width:6px}.tg::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
-.tl{border-radius:14px;padding:11px 8px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:4px;justify-content:center;border:1px solid rgba(15,23,42,.06);transition:transform .2s}
+.tl{border-radius:14px;padding:12px 8px;text-align:center;min-width:0;display:flex;flex-direction:column;gap:4px;justify-content:center;border:1px solid rgba(15,23,42,.06);transition:transform .2s}
 .tl:hover{transform:translateY(-2px)}
 .tl b{font-size:14.5px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rk{font-size:11px;color:#334155;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm{font-size:11.5px;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* 작은 창 크기 대응 */
+@media (max-width: 1220px){
+    .sgrid,.atk-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .tg{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
 /* 라이트모드 텍스트 가독성 고정 */
 [data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stMarkdownContainer"] strong,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *,[data-testid="stSliderTickBarMin"],[data-testid="stSliderTickBarMax"],[data-testid="stToggle"] label *{color:#0f172a!important}
 span[data-baseweb="tag"]{background:#3b82f6!important;border-radius:8px}[role="slider"]{background:#3b82f6!important}[data-testid="stExpander"]{border-radius:16px;background:#fff;border:1px solid #e5e9f2}
-[data-testid="stPopover"] button{border-radius:99px!important;padding:3px 12px!important;min-height:32px!important;font-size:12px!important;font-weight:700!important;background:#f8fafc!important;border:1px solid #cbd5e1!important}
+[data-testid="stPopover"] button{border-radius:12px!important;padding:0 12px!important;min-height:38px!important;font-size:12.5px!important;font-weight:700!important;background:#f8fafc!important;border:1px solid #cbd5e1!important;white-space:nowrap!important}
 [data-testid="stPopover"] button:hover{border-color:#3b82f6!important;color:#2563eb!important}
 
 .spl{position:fixed;inset:0;z-index:99999;background:#0f172a;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:so 2.2s ease forwards}
@@ -470,9 +515,9 @@ if not st.session_state.get("splash"):
 
 NAMES = [
     "🔍 1. 내 비밀번호 진단",
-    "⚡ 2. 해킹 방법과 속도",
-    "📏 3. 길고 복잡할수록 안전할까?",
-    "🚨 4. 흔한 비밀번호의 함정"
+    "⚡ 2. 해킹 방식과 속도",
+    "📏 3. 길이·조합 효과",
+    "🚨 4. 흔한 비밀번호"
 ]
 if "nav" not in st.session_state:
     st.session_state["nav"] = NAMES[0]
@@ -482,7 +527,7 @@ def _keep():
         st.session_state["nav"] = st.session_state.get("last_nav", NAMES[0])
 
 with st.container(key="hdr"):
-    hc = st.columns([2.4, 8.4, 1.2], vertical_alignment="center")
+    hc = st.columns([2.5, 8.1, 1.4], vertical_alignment="center")
     hc[0].markdown('<div class="ht">🔐 비밀번호 보안 대시보드</div>', unsafe_allow_html=True)
     if hasattr(st, "segmented_control"):
         hc[1].segmented_control("메뉴", NAMES, key="nav", label_visibility="collapsed", on_change=_keep)
@@ -500,7 +545,8 @@ def _setall(key, vals):
 def multi_pick(col, label, options, key):
     if key not in st.session_state:
         st.session_state[key] = list(options)
-    with col.popover(f"{label} ({len(st.session_state[key])}/{len(options)}개 선택)", **_POP_W):
+    col.markdown(f'<div class="flt-lbl">{label}</div>', unsafe_allow_html=True)
+    with col.popover(f"{len(st.session_state[key])}/{len(options)}개 선택됨", **_POP_W):
         b = st.columns(2)
         b[0].button("전체 선택", key=f"{key}_all", on_click=_setall, args=(key, options), **_BTN_W)
         b[1].button("전체 해제", key=f"{key}_none", on_click=_setall, args=(key, []), **_BTN_W)
@@ -540,15 +586,17 @@ def diagnose(pw: str, example_label: str = None):
     leaked = hibp_cnt is not None and hibp_cnt > 0
 
     sp_ch = "!" if not pw.endswith("!") else "#"
-    pw_sp = pw + sp_ch
     if pw.isdigit():
         add4 = "7392"
     elif pw.isalpha():
         add4 = "mpxq" if pw.islower() else "MpXq"
     else:
         add4 = "m7p9"
+
+    # 특수문자 1개(+1자), 길이 4글자(+4자), 특수문자 1개 + 길이 4글자(+5자) 정확히 반영
+    pw_sp = pw + sp_ch
     pw_l4 = pw + add4
-    pw_both = pw + ("!K9m" if not pw.endswith("!") else "#K9m")
+    pw_both = pw + sp_ch + add4
 
     s_sp = _eval_struct(pw_sp)
     s_l4 = _eval_struct(pw_l4)
@@ -564,7 +612,7 @@ def diagnose(pw: str, example_label: str = None):
     s_l4["pct"] = float((M["lc"] <= s_l4["adj_lc"]).mean() * 100)
     s_l4["score"] = float(np.clip((s_l4["adj_lc"] + 2.0) / 14.0 * 100.0, 0, 100))
 
-    s_both["adj_lc"] = max(s_both["adj_lc"], max(s_sp["adj_lc"], s_l4["adj_lc"]) + 1.4)
+    s_both["adj_lc"] = max(s_both["adj_lc"], max(s_sp["adj_lc"], s_l4["adj_lc"]) + 1.5)
     s_both["raw_sec"] = 10 ** s_both["adj_lc"]
     s_both["pct"] = float((M["lc"] <= s_both["adj_lc"]).mean() * 100)
     s_both["score"] = float(np.clip((s_both["adj_lc"] + 2.0) / 14.0 * 100.0, 0, 100))
@@ -591,7 +639,7 @@ def diagnose(pw: str, example_label: str = None):
         "base": _pack(base, "base", "현재 비밀번호", "현재 상태", pw, m_base, apply_leak=True),
         "sp1": _pack(s_sp, "sp1", "특수문자 1개 추가", "+특수문자 1개", pw_sp, m_base + sp_ch, apply_leak=False),
         "len4": _pack(s_l4, "len4", "길이 4글자 추가", "+길이 4글자", pw_l4, m_base + add4, apply_leak=False),
-        "both": _pack(s_both, "both", "특수문자 + 4글자 추가", "+특수·4글자", pw_both, m_base + ("!K9m" if not pw.endswith("!") else "#K9m"), apply_leak=False)
+        "both": _pack(s_both, "both", "특수문자 + 4글자 추가", "+특수·4글자", pw_both, m_base + sp_ch + add4, apply_leak=False)
     }
 
     st.session_state["diag"] = dict(
@@ -599,8 +647,13 @@ def diagnose(pw: str, example_label: str = None):
         base_common=base["common"], combo=combo_label(base), scenarios=scenarios
     )
     st.session_state["wi_mode"] = "base"
-    # 2번 탭의 비교 글자 수 슬라이더도 내 비밀번호 길이에 맞춰 자동 연동
     st.session_state["i_l"] = int(np.clip(base["L"], 4, 24))
+
+def _submit_pw_input():
+    val = st.session_state.get("pw_box", "")
+    if val:
+        diagnose(val, example_label=None)
+        st.session_state["pw_box"] = ""
 
 if "diag" not in st.session_state:
     diagnose("latte79", example_label="짧은 일상형")
@@ -620,25 +673,26 @@ def p_lab():
     </div>""")
 
     with st.container(key="ucard_t1_ctrl"):
-        r1 = st.columns([4.4, 1.4, 1.05, 1.05, 1.05, 1.05], gap="small", vertical_alignment="center")
-        with r1[0]:
-            with st.form("f_pw", clear_on_submit=False, border=False):
-                fc = st.columns([3.5, 1.3], gap="small", vertical_alignment="center")
-                pw_in = fc[0].text_input("비밀번호 입력", type="password", placeholder="진단할 비밀번호를 입력하세요 (외부 전송 안 됨)", label_visibility="collapsed")
-                if fc[1].form_submit_button("진단하기") and pw_in:
-                    diagnose(pw_in, example_label=None)
-        show_pw = r1[1].toggle("👁️ 글자 보기", value=False, key="show_pw")
-        examples = [
-            ("🔓 흔한 단어", "흔한 단어형", "password123"),
-            ("☕ 짧은 일상", "짧은 일상형", "latte79"),
-            ("📅 연도·패턴", "연도·패턴형", "Summer2024!"),
-            ("🛡️ 무작위 안전", "무작위 안전형", "vK9#mQ2$zL7@pW4xR8")
-        ]
-        for i, (col, (btn_lab, ex_name, ex_val)) in enumerate(zip(r1[2:], examples)):
-            if col.button(btn_lab, key=f"d_ex{i}", **_BTN_W):
-                diagnose(ex_val, example_label=ex_name)
-
-        st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
+        with st.container(key="pw_row"):
+            r1 = st.columns([3.3, 1.1, 1.3, 1.08, 1.08, 1.08, 1.08], gap="small", vertical_alignment="center")
+            r1[0].text_input(
+                "비밀번호 입력", key="pw_box", type="password",
+                placeholder="진단할 비밀번호 입력 후 Enter (저장 안 됨)",
+                label_visibility="collapsed", on_change=_submit_pw_input
+            )
+            with r1[1]:
+                with st.container(key="pw_submit"):
+                    st.button("진단하기", on_click=_submit_pw_input, **_BTN_W)
+            show_pw = r1[2].toggle("👁️ 글자 보기", value=False, key="show_pw")
+            examples = [
+                ("🔓 흔한 비번", "흔한 단어형", "password123"),
+                ("☕ 짧은 일상", "짧은 일상형", "latte79"),
+                ("📅 연도 습관", "연도·패턴형", "Summer2024!"),
+                ("🛡️ 안전 조합", "무작위 안전형", "vK9#mQ2$zL7@pW4xR8")
+            ]
+            for i, (col, (btn_lab, ex_name, ex_val)) in enumerate(zip(r1[3:], examples)):
+                if col.button(btn_lab, key=f"d_ex{i}", **_BTN_W):
+                    diagnose(ex_val, example_label=ex_name)
 
         d = st.session_state["diag"]
         scs = d["scenarios"]
@@ -650,26 +704,25 @@ def p_lab():
         hibp_cnt = d.get("hibp")
         leaked = hibp_cnt is not None and hibp_cnt > 0
 
-        # 내 비밀번호 표시 문자열 & 실제 들어간 조건 개수 표시 (한눈에 확인!)
         is_ex = d.get("is_example", False)
         if is_ex or show_pw:
             disp_pw = f"{base_sc['plain']}  →  {act_sc['plain']}" if wi_key != "base" else base_sc["plain"]
         else:
             disp_pw = f"{base_sc['masked']}  →  {act_sc['masked']}" if wi_key != "base" else base_sc["masked"]
 
-        src_badge = f'<span class="pw-tag">예시: {_html.escape(str(d["example_label"]))}</span>' if is_ex else '<span class="pw-tag direct">🔒 내가 입력한 비밀번호</span>'
+        src_badge = f'<span class="pw-tag">예시: {_html.escape(str(d["example_label"]))}</span>' if is_ex else '<span class="pw-tag direct">🔒 내 비밀번호</span>'
 
         def _cond_pill(name, b_val, a_val, unit="개"):
             if a_val != b_val:
                 diff = a_val - b_val
-                return f'<span class="cpill up-chg">{name} <b>{b_val} → {a_val}{unit} (+{diff})</b></span>'
+                return f'<span class="cpill up-chg">{name} <b>{b_val}→{a_val}{unit} (+{diff})</b></span>'
             return f'<span class="cpill">{name} <b>{a_val}{unit}</b></span>'
 
         pat_list = []
         if act_sc["seq"]:
-            pat_list.append("연속글자(123/qwe)")
+            pat_list.append("연속글자")
         if act_sc["rep"]:
-            pat_list.append("반복글자(aaa)")
+            pat_list.append("반복글자")
         if act_sc["yr"]:
             pat_list.append("연도·날짜")
         pat_pill = (
@@ -698,7 +751,7 @@ def p_lab():
                 ("base", f"현재 상태 ({base_sc['L']}자)"),
                 ("sp1", f"+ 특수문자 1개 ({scs['sp1']['L']}자)"),
                 ("len4", f"+ 길이 4글자 ({scs['len4']['L']}자)"),
-                ("both", f"+ 특수문자 & 4글자 ({scs['both']['L']}자)")
+                ("both", f"+ 특수·4글자 ({scs['both']['L']}자)")
             ]
             for idx, (k_, lbl_) in enumerate(wi_opts):
                 if wc[idx + 1].button(lbl_, key=f"wi_b{idx}", type="primary" if wi_key == k_ else "secondary", **_BTN_W):
@@ -715,16 +768,23 @@ def p_lab():
     if wi_key == "base" and (base_sc["common"] or leaked):
         grade, g_col, g_msg = "위험", RED, "이미 알려진 비밀번호예요"
 
-    c1, c2, c3 = st.columns([2.9, 3.55, 3.55], gap="medium")
+    c1, c2, c3 = st.columns([3.0, 3.6, 3.4], gap="medium")
     with c1:
         with st.container(key="ucard_t1_gauge"):
-            card_head("내 비밀번호 안전 점수", g_msg)
+            card_head("내 비밀번호 안전 점수", f"등급: {grade} · {g_msg}")
             fig_g = go.Figure(go.Indicator(
                 mode="gauge+number", value=round(s),
-                number=dict(suffix="점", font=dict(size=36, color="#0f172a")),
-                title=dict(text=f"등급: {grade}", font=dict(size=15, color=g_col)),
+                domain=dict(x=[0.08, 0.92], y=[0.05, 0.92]),
+                number=dict(suffix="점", font=dict(size=34, color="#0f172a")),
                 gauge=dict(
-                    axis=dict(range=[0, 100]), bar=dict(color=g_col, thickness=0.34), bgcolor="#f1f5f9", borderwidth=0,
+                    axis=dict(
+                        range=[0, 100],
+                        tickmode="array",
+                        tickvals=[0, 30, 55, 80, 100],
+                        ticktext=["0", "30", "55", "80", "100"],
+                        tickfont=dict(size=11.5, color="#64748b")
+                    ),
+                    bar=dict(color=g_col, thickness=0.34), bgcolor="#f1f5f9", borderwidth=0,
                     steps=[
                         dict(range=[0, 30], color="#fee2e2"),
                         dict(range=[30, 55], color="#fef3c7"),
@@ -734,80 +794,78 @@ def p_lab():
                 )
             ))
             fig_g.add_annotation(
-                text="<b>안전도</b>", x=0.5, y=0.31, xref="paper", yref="paper",
+                text="<b>안전도</b>", x=0.5, y=0.36, xref="paper", yref="paper",
                 xanchor="center", yanchor="bottom", showarrow=False,
-                font=dict(family=FONT, size=13, color="#64748b")
+                font=dict(family=FONT, size=12.5, color="#64748b")
             )
-            show(style(fig_g, 205, t=38, l=34, r=34, b=8), f"d_g_{wi_key}_{round(s)}_{act_sc['L']}")
+            show(style(fig_g, 190, t=12, l=18, r=18, b=6), f"d_g_{wi_key}_{round(s)}_{act_sc['L']}")
 
+            md('<hr class="sub-div"><div class="mini-ttl">실제 25,000개 비밀번호와 길이 비교 (단위: 자)</div>')
             vf = go.Figure([
                 go.Violin(x=M[M.등급 == g_].length, name=g_, orientation="h", line_color=CCOL[g_], points=False, showlegend=False, spanmode="hard")
                 for g_ in ORDER
             ])
             if wi_key != "base" and act_sc["L"] != base_sc["L"]:
-                vf.add_vline(x=base_sc["L"], line_color=GRAY, line_dash="dot", annotation_text=f"원래 {base_sc['L']}자", annotation_position="bottom left")
-                vf.add_vline(x=act_sc["L"], line_color=BLUE, line_width=2.5, annotation_text=f"변경 {act_sc['L']}자", annotation_position="top right")
-            else:
-                vf.add_vline(
-                    x=act_sc["L"], line_color="#0f172a", line_dash="dash", line_width=2,
-                    annotation_text=f"내 길이 {act_sc['L']}자", annotation_position="top right",
-                    annotation=dict(bgcolor="rgba(255,255,255,0.88)", borderpad=2)
+                vf.add_vline(x=base_sc["L"], line_color=GRAY, line_dash="dot", line_width=1.5)
+                vf.add_vline(x=act_sc["L"], line_color=BLUE, line_width=2.5)
+                vf.add_annotation(
+                    x=act_sc["L"], y=1.15, xref="x", yref="paper",
+                    text=f"<b>{base_sc['L']}자 → {act_sc['L']}자</b>", showarrow=False,
+                    font=dict(family=FONT, size=12, color=BLUE), bgcolor="rgba(255,255,255,0.92)"
                 )
-            vf.update_xaxes(title="실제 25,000개 비밀번호의 등급별 길이 분포(자)")
-            show(style(vf, 185, t=18, l=8, r=16, b=10), f"d_vf_{wi_key}_{act_sc['L']}")
+            else:
+                vf.add_vline(x=act_sc["L"], line_color="#0f172a", line_dash="dash", line_width=2)
+                vf.add_annotation(
+                    x=min(max(act_sc["L"], 8), 54), y=1.15, xref="x", yref="paper",
+                    text=f"<b>내 길이 {act_sc['L']}자</b>", showarrow=False,
+                    font=dict(family=FONT, size=12, color="#0f172a"), bgcolor="rgba(255,255,255,0.92)"
+                )
+            vf.update_xaxes(range=[0, 65], tickvals=[0, 15, 30, 45, 60])
+            show(style(vf, 195, t=30, l=8, r=16, b=28), f"d_vf_{wi_key}_{act_sc['L']}")
 
     with c2:
         with st.container(key="ucard_t1_wi"):
             order_keys = ["base", "sp1", "len4", "both"]
-            y_lbls = [f"{scs[k]['short']} ({scs[k]['L']}자)" for k in order_keys]
+            y_lbls = [f"{scs[k]['short']} ({scs[k]['L']}자)  " for k in order_keys]
             secs = [scs[k]["sec"] for k in order_keys]
-            l_vals = [float(np.clip(math.log10(max(v, 1e-3)), -3.0, 18.0)) for v in secs]
             bar_cols = [GREEN if v >= YR else (ORANGE if v >= 3600 else RED) for v in secs]
-            b_widths = [3.0 if k == wi_key else 0 for k in order_keys]
-            txt_lbl = [human(v) for v in secs]
-            t_pairs = [(0.2, "0.01초"), (3.2, "1초"), (6.756, "1시간"), (10.699, "1년"), (12.699, "100년")]
-            if max(l_vals) > 12.0:
-                t_pairs.append((18.699, "1억 년"))
+            b_widths = [2.8 if k == wi_key else 0 for k in order_keys]
+            txt_lbl = [f" {human(v)}" for v in secs]
 
             card_head(
                 "글자를 더했을 때 버팀 시간 변화",
                 f"현재 {human(base_sc['sec'])}에서 특수문자+4글자를 더하면 {human(scs['both']['sec'])}까지 늘어납니다."
             )
-            fig_wi = go.Figure(go.Bar(
-                y=y_lbls, x=[v + 3.2 for v in l_vals], orientation="h",
-                marker=dict(color=bar_cols, line=dict(color="#0f172a", width=b_widths)),
+            fig_wi = go.Figure()
+            x_bars = apply_hbar_time_axis(fig_wi, secs, YR, "안전 기준 (1년)", "모든 조합을 대입할 때 걸리는 예상 시간")
+            fig_wi.add_trace(go.Bar(
+                y=y_lbls, x=x_bars, orientation="h",
+                marker=dict(color=bar_cols, line=dict(color="#0f172a", width=b_widths), cornerradius=6),
                 text=txt_lbl, textposition="outside", cliponaxis=False,
                 textfont=dict(size=12.5, weight="bold", color="#0f172a"),
                 hovertemplate="%{y}: %{text}<extra></extra>"
             ))
-            fig_wi.add_vline(x=math.log10(YR) + 3.2, line_dash="dot", line_color="#0f172a", line_width=1.8, annotation_text="안전 기준 (1년)", annotation_position="top")
-            fig_wi.update_layout(bargap=0.42)
-            fig_wi.update_xaxes(
-                title="모든 조합을 대입할 때 걸리는 예상 시간",
-                tickvals=[p[0] for p in t_pairs],
-                ticktext=[p[1] for p in t_pairs],
-                range=[0, max(max(l_vals) + 3.2, math.log10(YR) + 3.2) + 5.8]
-            )
+            fig_wi.update_layout(bargap=0.44)
             fig_wi.update_yaxes(autorange="reversed", showgrid=False)
-            show(style(fig_wi, 390, t=28, l=10, r=32, b=16), f"d_wi_{wi_key}_{act_sc['L']}")
+            show(style(fig_wi, 422, t=36, l=12, r=24, b=46), f"d_wi_{wi_key}_{act_sc['L']}")
 
     with c3:
         with st.container(key="ucard_t1_res"):
             if base_sc["common"]:
-                common_html = '<div class="hibp-bar hibp-bad"><span>📋 흔한 비밀번호 Top 500</span><span>포함됨 · 1초 내 즉시 뚫림</span></div>'
+                common_html = '<div class="hibp-bar hibp-bad"><span>📋 흔한 비밀번호 Top 500</span><span>포함됨 · 1초 내 뚫림</span></div>'
                 common_chip = ("흔한 비번 아님", False)
             else:
                 common_html = '<div class="hibp-bar hibp-ok"><span>📋 흔한 비밀번호 Top 500</span><span>안심 (목록에 없음)</span></div>'
                 common_chip = ("흔한 비번 아님", True)
 
             if hibp_cnt is None:
-                hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 실제 유출 기록 조회 (HIBP)</span><span>연결 안 됨 · 확인 불가</span></div>'
+                hibp_html = '<div class="hibp-bar hibp-na"><span>🌐 실제 유출 기록 조회</span><span>연결 안 됨 · 확인 불가</span></div>'
                 hibp_chip = ("유출 확인 불가", None)
             elif hibp_cnt > 0:
-                hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 실제 유출 기록 (원본 기준)</span><span>전 세계 {hibp_cnt:,}번 유출됨</span></div>'
+                hibp_html = f'<div class="hibp-bar hibp-bad"><span>🚨 실제 유출 기록 (원본)</span><span>{hibp_cnt:,}번 유출됨</span></div>'
                 hibp_chip = ("유출된 적 없음", False)
             else:
-                hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ 실제 유출 기록 (원본 기준)</span><span>안심 (유출 0건)</span></div>'
+                hibp_html = '<div class="hibp-bar hibp-ok"><span>🛡️ 실제 유출 기록 (원본)</span><span>안심 (유출 0건)</span></div>'
                 hibp_chip = ("유출된 적 없음", True)
 
             chips = [
@@ -819,29 +877,35 @@ def p_lab():
                 f'<div class="chip {"na" if v is None else "ok" if v else "no"}">{"–" if v is None else "✓" if v else "✕"} {k}</div>'
                 for k, v in chips
             )
-            time_sub = "흔한 비번 → 해커가 1순위로 대입" if act_sc["common"] else "글자 조합 + 패턴 보정 시간"
+            time_sub = "흔한 비번 → 1순위로 대입" if act_sc["common"] else "글자 조합 + 패턴 보정 시간"
 
-            md(f"""<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                <div class="ct">세부 진단 & 안전 조건 체크</div>
-                <span class="grade-pill" style="background:{g_col}">{grade} · {round(s)}점</span>
-            </div>
-            <div class="cs" style="margin-bottom:8px">빨간색(✕)으로 표시된 항목을 보완할수록 안전도가 빠르게 올라갑니다.</div>
-            <div class="stat-grid">
-                <div class="stat-box">
-                    <div class="stat-lbl">예상 버팀 시간</div>
-                    <div class="stat-val">{human(act_sc['sec'])}</div>
-                    <div class="stat-sub">{time_sub}</div>
+            md(f"""<div class="res-inner">
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+                        <div class="ct">세부 진단 & 안전 조건 체크</div>
+                        <span class="grade-pill" style="background:{g_col}">{grade} · {round(s)}점</span>
+                    </div>
+                    <div class="cs">빨간색(✕) 항목을 보완할수록 안전도가 빠르게 올라갑니다.</div>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-lbl">예상 버팀 시간</div>
+                            <div class="stat-val">{human(act_sc['sec'])}</div>
+                            <div class="stat-sub">{time_sub}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-lbl">25,000개 중 안전 순위</div>
+                            <div class="stat-val">{rank_text(act_sc['pct'])}</div>
+                            <div class="stat-sub">상위권일수록 더 안전함</div>
+                        </div>
+                    </div>
+                    {common_html}
+                    {hibp_html}
                 </div>
-                <div class="stat-box">
-                    <div class="stat-lbl">25,000개 중 안전 순위</div>
-                    <div class="stat-val">{rank_text(act_sc['pct'])}</div>
-                    <div class="stat-sub">상위권일수록 더 안전함</div>
+                <div>
+                    <div style="font-size:13.5px;font-weight:800;color:#0f172a;margin-bottom:8px">9가지 안전 비밀번호 조건 {"(실험 반영)" if wi_key != "base" else ""}</div>
+                    <div class="chk-grid">{ch}</div>
                 </div>
-            </div>
-            {common_html}
-            {hibp_html}
-            <div style="font-size:13px;font-weight:800;color:#0f172a;margin:12px 0 6px">9가지 안전 비밀번호 조건 {"(실험 반영)" if wi_key != "base" else ""}</div>
-            <div class="chk-grid">{ch}</div>""")
+            </div>""")
 
     source("t3")
 
@@ -866,12 +930,12 @@ def p_intro():
     with top_c2:
         with st.container(key="ucard_t2_flt"):
             TS = {"1분": 60, "1시간": 3600, "1일": 86400, "1년": YR, "100년": YR * 100}
-            f1, f2 = st.columns(2, gap="medium")
-            tk = f1.select_slider("얼마나 버텨야 '안전'하다고 볼까요?", options=list(TS), value="1년", key="i_t")
+            f1, f2 = st.columns(2, gap="medium", vertical_alignment="top")
+            tk = f1.select_slider("안전 기준 시간", options=list(TS), value="1년", key="i_t")
             T = TS[tk]
             if "i_l" not in st.session_state:
                 st.session_state["i_l"] = int(np.clip(u_len, 4, 24))
-            Ln = f2.slider("비교해 볼 비밀번호 글자 수", 4, 24, key="i_l")
+            Ln = f2.slider("비교할 비밀번호 글자 수 (자)", 4, 24, key="i_l")
 
     pc = [
         (M.crack_time_sec <= T).mean() * 100,
@@ -884,7 +948,7 @@ def p_intro():
         ("📊", "분석한 실제 비밀번호", f"{len(M) + len(P):,}개", f"구조 분석 {len(M):,}개 + 흔한 비번 {len(P)}개"),
         ("🚪", f"로그인 창 찍기 ({tk} 기준)", f"{pc[1]:.0f}% 뚫림", "초당 10번씩 직접 입력할 때 뚫리는 비율"),
         ("⚡", "서버 파일 유출 시 속도", "1억 배 빠름", "초당 10억 번 대입 (온라인보다 10⁸배 고속)"),
-        ("➕", "글자 1개 더 늘릴 때마다", f"약 {10 ** slp:.0f}배 더 버팀", "맞춰야 할 경우의 수가 기하급수로 증가")
+        ("➕", "글자 1개 더 늘릴 때마다", f"×{10 ** slp:.0f}배 증가", "맞춰야 할 경우의 수가 기하급수로 증가")
     ])
 
     r1_c1, r1_c2 = st.columns([5.0, 5.0], gap="medium")
@@ -896,10 +960,10 @@ def p_intro():
             wf = [pl, pc[1], pc[2]]
             card_head(
                 "비밀번호 100개 중 몇 개가 위험할까?",
-                f"선택한 안전 기준({tk}) 안에 뚫리는 비밀번호의 비율(빨간 칸)입니다. 서버 파일이 유출되면 위험도가 급증합니다."
+                f"안전 기준({tk}) 안에 뚫리는 비율(빨간 칸)입니다. 서버 파일이 유출되면 위험도가 급격히 올라갑니다."
             )
-            ttl = [f"비슷한 길이 ({lo_l}~{hi_l}자)", "흔한 비번 (로그인 창)", "흔한 비번 (서버 유출 시)"]
-            fig = make_subplots(rows=1, cols=3, horizontal_spacing=0.08, subplot_titles=[f"{t}<br><b>{p:.0f}개 뚫림 ({p:.0f}%)</b>" for t, p in zip(ttl, wf)])
+            ttl = [f"내 길이 근처 ({lo_l}~{hi_l}자)", "흔한 비번 · 로그인 창", "흔한 비번 · 파일 유출"]
+            fig = make_subplots(rows=1, cols=3, horizontal_spacing=0.10, subplot_titles=[f"{t}<br><b>{p:.0f}% 뚫림</b>" for t, p in zip(ttl, wf)])
             for i, p in enumerate(wf):
                 z = np.zeros(100)
                 z[:int(round(p))] = 1
@@ -907,7 +971,7 @@ def p_intro():
                 fig.update_xaxes(visible=False, row=1, col=i + 1)
                 fig.update_yaxes(visible=False, autorange="reversed", row=1, col=i + 1)
             fig.update_annotations(font_size=12.5)
-            show(style(fig, 295, t=58, l=6, r=6, b=8), f"i1_{tk}_{Ln}")
+            show(style(fig, 320, t=62, l=10, r=10, b=18), f"i1_{tk}_{Ln}")
 
     with r1_c2:
         with st.container(key="ucard_t2_bar"):
@@ -926,37 +990,29 @@ def p_intro():
                 f"선택한 {Ln}글자의 보통 버팀 시간(중앙값)은 {human(ln_med)}이며, {verdict}."
             )
             groups = [
-                ("8글자 · 특수문자 포함", _med_sec((M.length == 8) & (M.n_special > 0), 8)),
-                ("10글자 · 특수문자 없음", _med_sec((M.length == 10) & (M.n_special == 0), 10)),
-                ("12글자 · 특수문자 없음", _med_sec((M.length == 12) & (M.n_special == 0), 12)),
-                ("16글자 · 특수문자 없음", _med_sec((M.length == 16) & (M.n_special == 0), 16)),
-                (f"비교 중인 길이 ({Ln}글자)", ln_med),
+                ("8글자 · 특수문자 포함  ", _med_sec((M.length == 8) & (M.n_special > 0), 8)),
+                ("10글자 · 특수문자 없음  ", _med_sec((M.length == 10) & (M.n_special == 0), 10)),
+                ("12글자 · 특수문자 없음  ", _med_sec((M.length == 12) & (M.n_special == 0), 12)),
+                ("16글자 · 특수문자 없음  ", _med_sec((M.length == 16) & (M.n_special == 0), 16)),
+                (f"비교 중인 길이 ({Ln}글자)  ", ln_med),
             ]
             y_lbls = [g[0] for g in groups]
             meds = [g[1] for g in groups]
             cols = [GREEN if v > T else RED for v in meds]
-            l_meds = [float(np.clip(math.log10(max(v, 1e-3)), -3, 18)) for v in meds]
-            txt_lbl = [human(v) for v in meds]
-            t_pairs = [(0.2, "0.01초"), (3.2, "1초"), (6.756, "1시간"), (10.699, "1년"), (12.699, "100년")]
-            if max(l_meds) > 12.0:
-                t_pairs.append((18.699, "1억 년"))
+            txt_lbl = [f" {human(v)}" for v in meds]
 
-            fig = go.Figure(go.Bar(
-                y=y_lbls, x=[v + 3.2 for v in l_meds], orientation="h",
-                marker=dict(color=cols, line=dict(color="#0f172a", width=[0, 0, 0, 0, 2.8])),
+            fig = go.Figure()
+            x_bars = apply_hbar_time_axis(fig, meds, T, f"기준 ({tk})", "무차별 대입 기준 보통 버팀 시간")
+            fig.add_trace(go.Bar(
+                y=y_lbls, x=x_bars, orientation="h",
+                marker=dict(color=cols, line=dict(color="#0f172a", width=[0, 0, 0, 0, 2.8]), cornerradius=6),
                 text=txt_lbl, textposition="outside", cliponaxis=False,
                 textfont=dict(size=12.5, weight="bold", color="#0f172a"),
                 hovertemplate="%{y}: %{text}<extra></extra>"
             ))
-            fig.add_vline(x=math.log10(T) + 3.2, line_dash="dot", line_color="#0f172a", line_width=2, annotation_text=f"기준 ({tk})", annotation_position="top")
-            fig.update_layout(bargap=0.36)
-            fig.update_xaxes(
-                tickvals=[p[0] for p in t_pairs],
-                ticktext=[p[1] for p in t_pairs],
-                range=[0, max(max(l_meds), math.log10(T)) + 6.2]
-            )
-            fig.update_yaxes(showgrid=False)
-            show(style(fig, 295, t=30, l=10, r=32, b=10), f"i2_{tk}_{Ln}")
+            fig.update_layout(bargap=0.38)
+            fig.update_yaxes(autorange="reversed", showgrid=False)
+            show(style(fig, 320, t=36, l=12, r=24, b=46), f"i2_{tk}_{Ln}")
 
     with st.container(key="ucard_t2_atk"):
         card_head(
@@ -1008,9 +1064,9 @@ def p_leak():
         </div>""")
     with top_c2:
         with st.container(key="ucard_t3_flt"):
-            f1, f2 = st.columns([1.05, 1.25], gap="medium", vertical_alignment="bottom")
+            f1, f2 = st.columns([1.05, 1.25], gap="medium", vertical_alignment="top")
             gs = multi_pick(f1, "보안 강도 등급", ORDER, "a_g")
-            lr = f2.slider("살펴볼 글자 수 범위", 4, 63, (4, 40), key="a_l")
+            lr = f2.slider("살펴볼 글자 수 범위 (자)", 4, 63, (4, 40), key="a_l")
 
     f = M[M.등급.isin(gs) & M.length.between(*lr)]
     if f.empty:
@@ -1032,7 +1088,7 @@ def p_leak():
     else:
         slope, r2 = float("nan"), float("nan")
 
-    r1_c1, r1_c2 = st.columns([5.4, 4.6], gap="medium")
+    r1_c1, r1_c2 = st.columns([5.3, 4.7], gap="medium")
     with r1_c1:
         with st.container(key="ucard_t3_line"):
             desc = (
@@ -1057,12 +1113,21 @@ def p_leak():
                     customdata=[[human(v), n] for v, n in zip(g.med, g.n)],
                     hovertemplate="길이 %{x}글자<br>보통 버팀 시간: %{customdata[0]}<br>분석 개수: %{customdata[1]}개<extra></extra>"
                 ))
-                fig.add_hline(y=math.log10(YR), line_dash="dot", line_color=RED, annotation_text="안전 기준 (1년)", annotation_position="top left")
+                fig.add_hline(
+                    y=math.log10(YR), line_dash="dot", line_color=RED,
+                    annotation_text="안전 기준 (1년)", annotation_position="top left",
+                    annotation=dict(bgcolor="rgba(255,255,255,0.88)")
+                )
                 if lr[0] <= u_len <= lr[1]:
-                    fig.add_vline(x=u_len, line_dash="dash", line_color=GREEN, line_width=2.2, annotation_text=f"내 비밀번호 ({u_len}자)", annotation_position="bottom right")
+                    v_pos = "top left" if u_len > (lr[0] + lr[1]) * 0.65 else "top right"
+                    fig.add_vline(
+                        x=u_len, line_dash="dash", line_color=GREEN, line_width=2.2,
+                        annotation_text=f"내 비번 ({u_len}자)", annotation_position=v_pos,
+                        annotation=dict(bgcolor="rgba(255,255,255,0.9)")
+                    )
                 fig.update_xaxes(title="비밀번호 글자 수 (자)")
-                tick_axis(fig, min(y.min(), math.log10(YR)), y.max())
-                show(style(fig, 310, t=20, l=10, r=18, b=12), "a1")
+                tick_axis(fig, min(y.min(), math.log10(YR)), y.max(), "y")
+                show(style(fig, 330, t=30, l=16, r=24, b=46), "a1")
 
     with r1_c2:
         with st.container(key="ucard_t3_box"):
@@ -1076,11 +1141,12 @@ def p_leak():
             for tp, c_ in zip(type_order, type_cols):
                 sub_t = f[f["조합유형"] == tp]
                 if not sub_t.empty:
-                    lbl = f"★ {tp} (내 유형)" if tp == u_combo else tp
+                    lbl = f"<b>★ {tp}</b><br>(내 유형)" if tp == u_combo else tp
                     fig.add_trace(go.Box(y=sub_t["lc"].clip(lower=-2), name=lbl, marker_color=c_, boxpoints=False))
             tick_axis(fig, max(f["lc"].min(), -2), f["lc"].max(), "y")
+            fig.update_xaxes(tickangle=0)
             fig.update_layout(showlegend=False)
-            show(style(fig, 310, t=20, l=10, r=16, b=12), "a3")
+            show(style(fig, 330, t=30, l=16, r=20, b=50), "a3")
 
     with st.container(key="ucard_t3_surv"):
         stp = [
@@ -1098,9 +1164,9 @@ def p_leak():
             marker=dict(color=["#64748b", "#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#059669"], cornerradius=10),
             hovertemplate="%{x}: %{y:.1f}% 살아남음<extra></extra>"
         ))
-        fig_f.update_yaxes(title="살아남은 비율 (%)", range=[0, 118])
-        fig_f.update_xaxes(showgrid=False)
-        show(style(fig_f, 235, t=24, l=10, r=16, b=10), "a2")
+        fig_f.update_yaxes(title="살아남은 비율 (%)", range=[0, 122])
+        fig_f.update_xaxes(showgrid=False, tickangle=0)
+        show(style(fig_f, 260, t=32, l=16, r=20, b=36), "a2")
 
     source("t1")
 
@@ -1119,8 +1185,8 @@ def p_common():
         </div>""")
     with top_c2:
         with st.container(key="ucard_t4_flt"):
-            f1, f2 = st.columns([1.15, 1.15], gap="medium", vertical_alignment="bottom")
-            n = f1.slider("인기 순위 몇 위까지 볼까요?", 10, 500, 40, 10, key="b_n")
+            f1, f2 = st.columns([1.15, 1.15], gap="medium", vertical_alignment="top")
+            n = f1.slider("인기 순위 범위 (상위 N개)", 10, 500, 40, 10, key="b_n")
             allc = sorted(P.cat_ko.unique())
             cats = multi_pick(f2, "비밀번호 단어 유형", allc, "b_c")
 
@@ -1137,7 +1203,7 @@ def p_common():
         ("🚨", "서버 유출 · 1초 내 뚫림", f"{(q.offline_crack_sec <= 1).mean() * 100:.0f}%", "흔한 목록 대입(사전 공격) 시에는 100% 즉시 해독")
     ])
 
-    r1_c1, r1_c2 = st.columns([5.3, 4.7], gap="medium")
+    r1_c1, r1_c2 = st.columns([5.2, 4.8], gap="medium")
     with r1_c1:
         with st.container(key="ucard_t4_tile"):
             tbl_b1 = lambda: st.dataframe(
@@ -1173,31 +1239,37 @@ def p_common():
                     hovertemplate="이 시간 안에 %{y:.0f}% 뚫림<extra>" + nm + "</extra>"
                 ))
             tick_axis(fig, min(q.lon.min(), q.lof.min()), max(q.lon.max(), q.lof.max()), "x")
-            fig.update_yaxes(title="뚫리는 비밀번호 비율 (%)", range=[0, 104])
-            show(style(fig, 315, t=28, l=10, r=18, b=12), "b3")
+            fig.update_yaxes(title="뚫리는 비밀번호 비율 (%)", range=[0, 105])
+            fig.update_layout(legend=dict(orientation="h", y=1.15, x=0, font=dict(size=12)))
+            show(style(fig, 335, t=52, l=16, r=28, b=42), "b3")
 
     with st.container(key="ucard_t4_cat"):
+        def _short_ex(s):
+            joined = ", ".join(s.astype(str).head(2))
+            return joined if len(joined) <= 22 else joined[:20] + "…"
+
         cat_df = (
             q.groupby("cat_ko")
-            .agg(cnt=("password", "size"), ex=("password", lambda s: ", ".join(s.astype(str).head(3))))
+            .agg(cnt=("password", "size"), ex=("password", _short_ex), full_ex=("password", lambda s: ", ".join(s.astype(str).head(5))))
             .reset_index()
             .sort_values("cnt", ascending=True)
         )
         card_head(
             "사람들은 흔한 비밀번호에 어떤 단어를 가장 많이 쓸까?",
-            f"가장 많은 유형은 '{topc.index[0]}'({topc.iloc[0]}개, {topc.iloc[0] / len(q):.0%})입니다. 막대에 마우스를 올리면 실제 자주 쓰인 예시 단어가 보입니다."
+            f"가장 많은 유형은 '{topc.index[0]}'({topc.iloc[0]}개, {topc.iloc[0] / len(q):.0%})입니다. 막대에 마우스를 올리면 예시 단어를 더 볼 수 있습니다."
         )
         fig_c = go.Figure(go.Bar(
-            y=cat_df["cat_ko"], x=cat_df["cnt"], orientation="h",
+            y=[f"{k}  " for k in cat_df["cat_ko"]], x=cat_df["cnt"], orientation="h",
             marker=dict(color=BLUE, cornerradius=8),
-            text=[f"{c}개 ({c / len(q):.0%})  ·  예: {e}" for c, e in zip(cat_df["cnt"], cat_df["ex"])],
+            text=[f" {c}개 ({c / len(q):.0%})  ·  예: {e}" for c, e in zip(cat_df["cnt"], cat_df["ex"])],
+            customdata=cat_df["full_ex"],
             textposition="outside", cliponaxis=False,
             textfont=dict(size=12.5, color="#1e293b"),
-            hovertemplate="<b>%{y}</b>: %{x}개<extra></extra>"
+            hovertemplate="<b>%{y}</b>: %{x}개<br>대표 예시: %{customdata}<extra></extra>"
         ))
-        fig_c.update_xaxes(title="포함된 비밀번호 개수", range=[0, max(cat_df["cnt"]) * 1.65])
+        fig_c.update_xaxes(title="포함된 비밀번호 개수", range=[0, max(cat_df["cnt"]) * 1.85 + 3], tickangle=0)
         fig_c.update_yaxes(showgrid=False)
-        show(style(fig_c, max(220, len(cat_df) * 32 + 45), t=14, l=12, r=36, b=12), "b2")
+        show(style(fig_c, max(240, len(cat_df) * 36 + 64), t=20, l=16, r=36, b=46), "b2")
 
     source("t2")
 
